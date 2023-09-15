@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <optional>
+#include <set>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
@@ -22,6 +23,10 @@ static bool enableValidationLayers = true;
 
 const std::vector<const char*> validationLayers {
     "VK_LAYER_KHRONOS_validation",
+};
+
+const std::vector<const char*> deviceExtensionsRequired {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
 struct QueueFamilyIndices
@@ -45,6 +50,7 @@ VkDebugUtilsMessengerEXT debugMessenger;
 VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 VkDevice logicalDevice;
 VkQueue graphicsQueue;
+VkQueue presentationQueue;
 VkSurfaceKHR surface;
 
 //Methods
@@ -66,6 +72,7 @@ private:
     void CreateSurface();
     void PickPhysicalDevice();
     bool IsSuitableDevice(VkPhysicalDevice requestedPhysicalDevice);
+    bool CheckDeviceExtensionSupport(VkPhysicalDevice requestedPhysicalDevice);
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice requestedPhysicalDevice);
     void CreateLogicalDevice();
     void GetLogicalDeviceQueues();

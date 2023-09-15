@@ -262,8 +262,28 @@ bool HelloTriangleApp::IsSuitableDevice(VkPhysicalDevice requestedPhysicalDevice
     VkPhysicalDeviceFeatures dFeatures;
     vkGetPhysicalDeviceFeatures(requestedPhysicalDevice, &dFeatures);
 
+    bool extensionSupport = CheckDeviceExtensionSupport(requestedPhysicalDevice);
+
     return dProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-        dFeatures.geometryShader && FindQueueFamilies(requestedPhysicalDevice).IsComplete();
+        dFeatures.geometryShader && FindQueueFamilies(requestedPhysicalDevice).IsComplete()
+        && extensionSupport;
+}
+
+bool HelloTriangleApp::CheckDeviceExtensionSupport(VkPhysicalDevice requestedPhysicalDevice)
+{
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(requestedPhysicalDevice, nullptr, &extensionCount, nullptr);
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(requestedPhysicalDevice, nullptr, &extensionCount, availableExtensions.data());
+
+    std::set<std::string> requiredExtensions (deviceExtensionsRequired.begin(), deviceExtensionsRequired.end());
+
+    for (const VkExtensionProperties& extension : availableExtensions)
+    {
+        requiredExtensions.erase(extension.extensionName);
+    }
+
+    return requiredExtensions.empty();
 }
 
 QueueFamilyIndices HelloTriangleApp::FindQueueFamilies(VkPhysicalDevice requestedPhysicalDevice)
@@ -303,18 +323,27 @@ QueueFamilyIndices HelloTriangleApp::FindQueueFamilies(VkPhysicalDevice requeste
 void HelloTriangleApp::CreateLogicalDevice()
 {
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
-
-    VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
-    deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    deviceQueueCreateInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-    deviceQueueCreateInfo.queueCount = 1;
-    float queuePriority = 1.0f;
-    deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+    std::set<uint32_t> queueIndices 
+    {
+        queueFamilyIndices.graphicsFamily.value(), 
+        queueFamilyIndices.presentationFamily.value()
+    };
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    for (uint32_t index : queueIndices) 
+    {
+        VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
+        deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        deviceQueueCreateInfo.queueFamilyIndex = index;
+        deviceQueueCreateInfo.queueCount = 1;
+        float queuePriority = 1.0f;
+        deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(deviceQueueCreateInfo);
+    }
 
     VkDeviceCreateInfo logicalDeviceCreateInfo{};
     logicalDeviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    logicalDeviceCreateInfo.queueCreateInfoCount = 1;
-    logicalDeviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+    logicalDeviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+    logicalDeviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
 
     //TODO
     VkPhysicalDeviceFeatures physicalDeviceFeatures{};
@@ -341,6 +370,7 @@ void HelloTriangleApp::GetLogicalDeviceQueues()
 {
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
     vkGetDeviceQueue(logicalDevice, queueFamilyIndices.graphicsFamily.value(), 0, &graphicsQueue);
+    vkGetDeviceQueue(logicalDevice, queueFamilyIndices.presentationFamily.value(), 0, &presentationQueue);
 }
 
 void HelloTriangleApp::MainLoop() 
