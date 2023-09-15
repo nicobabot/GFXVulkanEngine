@@ -51,7 +51,7 @@ void HelloTriangleApp::CreateInstance()
         requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
-    if (logDebug) 
+    if (logDebug == LogVerbosity::VERBOSE)
     {
         std::cout << "Required instance extensions" << '\n';
         for (const char* rExtension : requiredExtensions)
@@ -101,7 +101,7 @@ bool HelloTriangleApp::InstanceHasRequiredExtensions(std::vector<const char*> re
     std::vector<VkExtensionProperties> instanceExtensionProperties(instanceExtensionCount);
     vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, instanceExtensionProperties.data());
 
-    if (logDebug) 
+    if (logDebug == LogVerbosity::VERBOSE)
     {
         std::cout << "Available instance extensions" << '\n';
         for (VkExtensionProperties iExtension : instanceExtensionProperties)
@@ -134,7 +134,7 @@ bool HelloTriangleApp::CheckValidationLayerSupport(std::vector<const char*> vali
     std::vector<VkLayerProperties> instanceLayers(instanceLayerCount);
     vkEnumerateInstanceLayerProperties(&instanceLayerCount, instanceLayers.data());
 
-    if(logDebug)
+    if(logDebug == LogVerbosity::VERBOSE)
     {
         std::cout << "Instance Layers" << '\n';
         for (const VkLayerProperties& layerProperty : instanceLayers) 
@@ -278,6 +278,15 @@ bool HelloTriangleApp::CheckDeviceExtensionSupport(VkPhysicalDevice requestedPhy
 
     std::set<std::string> requiredExtensions (deviceExtensionsRequired.begin(), deviceExtensionsRequired.end());
 
+    if(logDebug == LogVerbosity::VERBOSE)
+    {
+        std::cout << "Available Extensions" << '\n';
+        for (const VkExtensionProperties& extension : availableExtensions)
+        {
+            std::cout << '\t' << extension.extensionName << '\n';
+        }
+    }
+
     for (const VkExtensionProperties& extension : availableExtensions)
     {
         requiredExtensions.erase(extension.extensionName);
@@ -345,10 +354,10 @@ void HelloTriangleApp::CreateLogicalDevice()
     logicalDeviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     logicalDeviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
 
-    //TODO
     VkPhysicalDeviceFeatures physicalDeviceFeatures{};
     logicalDeviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
-    logicalDeviceCreateInfo.enabledExtensionCount = 0;
+    logicalDeviceCreateInfo.ppEnabledExtensionNames = deviceExtensionsRequired.data();
+    logicalDeviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensionsRequired.size());
     
     if(enableValidationLayers)
     {

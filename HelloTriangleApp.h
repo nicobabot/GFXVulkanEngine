@@ -13,11 +13,18 @@
 #define APP_VERSION VK_MAKE_VERSION(0,0,1)
 #define VULKAN_API_VERSION VK_API_VERSION_1_0
 
+enum LogVerbosity 
+{
+    NONE = 0,
+    INFO,
+    VERBOSE
+};
+
 #if NDEBUG
-static bool logDebug = false;
+static LogVerbosity logDebug = LogVerbosity::NONE;
 static bool enableValidationLayers = false;
 #else //#if NDEBUG
-static bool logDebug = true;
+static LogVerbosity logDebug = LogVerbosity::VERBOSE;
 static bool enableValidationLayers = true;
 #endif //#else //#if NDEBUG
 
