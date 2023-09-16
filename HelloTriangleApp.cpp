@@ -27,6 +27,7 @@ void HelloTriangleApp::InitVulkan()
     GetLogicalDeviceQueues();
     CreateSwapChain();
     CreateSwapChainImageViews();
+    CreateGraphicsPipeline();
 }
 
 void HelloTriangleApp::CreateInstance()
@@ -560,6 +561,11 @@ void HelloTriangleApp::CreateSwapChainImageViews()
         }
     }
 
+}
+
+void HelloTriangleApp::CreateGraphicsPipeline()
+{
+    
 }
 
 void HelloTriangleApp::MainLoop() 
