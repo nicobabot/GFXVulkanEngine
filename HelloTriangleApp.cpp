@@ -25,6 +25,7 @@ void HelloTriangleApp::InitVulkan()
     PickPhysicalDevice();
     CreateLogicalDevice();
     GetLogicalDeviceQueues();
+    CreateSwapChain();
 }
 
 void HelloTriangleApp::CreateInstance()
@@ -413,6 +414,63 @@ void HelloTriangleApp::GetLogicalDeviceQueues()
     vkGetDeviceQueue(logicalDevice, queueFamilyIndices.presentationFamily.value(), 0, &presentationQueue);
 }
 
+void HelloTriangleApp::CreateSwapChain()
+{
+    SwapChainSupportDetails swapChainDetails = QuerySwapChainSupport(physicalDevice);
+
+    VkSurfaceFormatKHR swapChainFormat = ChooseSwapSurfaceFormat(swapChainDetails.formats);
+    VkPresentModeKHR swapChainPesent = ChooseSwapPresentMode(swapChainDetails.presentModes);
+    VkExtent2D swapChainExtent2D = ChooseSwapExtent(swapChainDetails.capabilities);
+
+    uint32_t imageCount = swapChainDetails.capabilities.minImageCount + 1;
+    uint32_t maxImageInSwapChain = swapChainDetails.capabilities.maxImageCount;
+    if (maxImageInSwapChain > 0 && imageCount > maxImageInSwapChain)
+    {
+        imageCount = maxImageInSwapChain;
+    }
+
+    VkSwapchainCreateInfoKHR createSwapChainInfo {};
+    createSwapChainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createSwapChainInfo.surface = surface;
+    createSwapChainInfo.imageFormat = swapChainFormat.format;
+    createSwapChainInfo.imageColorSpace = swapChainFormat.colorSpace;
+    createSwapChainInfo.presentMode = swapChainPesent;
+    createSwapChainInfo.imageExtent = swapChainExtent2D;
+    createSwapChainInfo.imageArrayLayers = 1;
+    //VK_IMAGE_USAGE_TRANSFER_DST_BIT -> to render to a separate image first to perform operations (post processing)
+    createSwapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
+    uint32_t familyIndices[] = 
+    { 
+        queueFamilyIndices.graphicsFamily.value(), 
+        queueFamilyIndices.presentationFamily.value() 
+    };
+
+    if (queueFamilyIndices.graphicsFamily != queueFamilyIndices.presentationFamily) 
+    {
+        createSwapChainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        createSwapChainInfo.queueFamilyIndexCount = 2;
+        createSwapChainInfo.pQueueFamilyIndices = familyIndices;
+    }
+    else
+    {
+        createSwapChainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        createSwapChainInfo.queueFamilyIndexCount = 0;
+        createSwapChainInfo.pQueueFamilyIndices = nullptr;
+    }
+    createSwapChainInfo.preTransform = swapChainDetails.capabilities.currentTransform;
+    createSwapChainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createSwapChainInfo.clipped = VK_TRUE;
+    //TODO RECREATE SWAPCHAIN (resize?)
+    createSwapChainInfo.oldSwapchain = VK_NULL_HANDLE;
+
+    if (vkCreateSwapchainKHR(logicalDevice, &createSwapChainInfo, nullptr, &swapChain) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("Error creating SwapChain");
+    }
+}
+
 VkSurfaceFormatKHR HelloTriangleApp::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
     for (VkSurfaceFormatKHR availableSurfaceFormat : availableFormats) 
@@ -475,6 +533,7 @@ void HelloTriangleApp::MainLoop()
 
 void HelloTriangleApp::Cleanup() 
 {
+    vkDestroySwapchainKHR(logicalDevice, swapChain, nullptr);
     vkDestroyDevice(logicalDevice, nullptr);
     if (enableValidationLayers) 
     {

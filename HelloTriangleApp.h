@@ -69,6 +69,7 @@ private:
     VkQueue graphicsQueue;
     VkQueue presentationQueue;
     VkSurfaceKHR surface;
+    VkSwapchainKHR swapChain;
 
 //Methods
 public:
@@ -94,6 +95,7 @@ private:
     SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device);
     void CreateLogicalDevice();
     void GetLogicalDeviceQueues();
+    void CreateSwapChain();
     VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
