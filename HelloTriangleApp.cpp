@@ -267,7 +267,7 @@ bool HelloTriangleApp::IsSuitableDevice(VkPhysicalDevice requestedPhysicalDevice
     bool isAdequateSwapchain = false;
     if (hasExtensionSupport) 
     {
-        SwapChainSupportDetails swapchainDetails = querySwapChainSupport(requestedPhysicalDevice);
+        SwapChainSupportDetails swapchainDetails = QuerySwapChainSupport(requestedPhysicalDevice);
         isAdequateSwapchain = !swapchainDetails.formats.empty() && !swapchainDetails.presentModes.empty();
     }
 
@@ -336,7 +336,7 @@ QueueFamilyIndices HelloTriangleApp::FindQueueFamilies(VkPhysicalDevice requeste
     return queueFamilyIndices;
 }
 
-SwapChainSupportDetails HelloTriangleApp::querySwapChainSupport(VkPhysicalDevice device)
+SwapChainSupportDetails HelloTriangleApp::QuerySwapChainSupport(VkPhysicalDevice device)
 {
     SwapChainSupportDetails details;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
@@ -413,7 +413,7 @@ void HelloTriangleApp::GetLogicalDeviceQueues()
     vkGetDeviceQueue(logicalDevice, queueFamilyIndices.presentationFamily.value(), 0, &presentationQueue);
 }
 
-VkSurfaceFormatKHR HelloTriangleApp::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+VkSurfaceFormatKHR HelloTriangleApp::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
     for (VkSurfaceFormatKHR availableSurfaceFormat : availableFormats) 
     {
@@ -427,7 +427,7 @@ VkSurfaceFormatKHR HelloTriangleApp::chooseSwapSurfaceFormat(const std::vector<V
     return availableFormats[0];
 }
 
-VkPresentModeKHR HelloTriangleApp::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+VkPresentModeKHR HelloTriangleApp::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
 {
     for (VkPresentModeKHR availablePresentMode : availablePresentModes)
     {
@@ -437,6 +437,32 @@ VkPresentModeKHR HelloTriangleApp::chooseSwapPresentMode(const std::vector<VkPre
         }
     }
     return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D HelloTriangleApp::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+{
+    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) 
+    {
+        return capabilities.currentExtent;
+    }
+    else 
+    {
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+
+        VkExtent2D actualExtent = 
+        {
+            static_cast<uint32_t>(width),
+            static_cast<uint32_t>(height)
+        };
+
+        actualExtent.width = std::clamp(actualExtent.width, 
+        capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        actualExtent.height = std::clamp(actualExtent.height, 
+        capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+        return actualExtent;
+    }
 }
 
 void HelloTriangleApp::MainLoop() 

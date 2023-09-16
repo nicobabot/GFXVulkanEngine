@@ -5,6 +5,7 @@
 #include <vector>
 #include <optional>
 #include <set>
+#include <algorithm>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
@@ -90,11 +91,12 @@ private:
     bool IsSuitableDevice(VkPhysicalDevice requestedPhysicalDevice);
     bool CheckDeviceExtensionSupport(VkPhysicalDevice requestedPhysicalDevice);
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice requestedPhysicalDevice);
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+    SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device);
     void CreateLogicalDevice();
     void GetLogicalDeviceQueues();
-    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+    VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+    VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     void MainLoop();
     void Cleanup();
 };
