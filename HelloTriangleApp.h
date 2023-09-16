@@ -90,8 +90,11 @@ private:
     bool IsSuitableDevice(VkPhysicalDevice requestedPhysicalDevice);
     bool CheckDeviceExtensionSupport(VkPhysicalDevice requestedPhysicalDevice);
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice requestedPhysicalDevice);
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
     void CreateLogicalDevice();
     void GetLogicalDeviceQueues();
+    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     void MainLoop();
     void Cleanup();
 };

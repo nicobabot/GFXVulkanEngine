@@ -262,11 +262,18 @@ bool HelloTriangleApp::IsSuitableDevice(VkPhysicalDevice requestedPhysicalDevice
     VkPhysicalDeviceFeatures dFeatures;
     vkGetPhysicalDeviceFeatures(requestedPhysicalDevice, &dFeatures);
 
-    bool extensionSupport = CheckDeviceExtensionSupport(requestedPhysicalDevice);
+    bool hasExtensionSupport = CheckDeviceExtensionSupport(requestedPhysicalDevice);
+
+    bool isAdequateSwapchain = false;
+    if (hasExtensionSupport) 
+    {
+        SwapChainSupportDetails swapchainDetails = querySwapChainSupport(requestedPhysicalDevice);
+        isAdequateSwapchain = !swapchainDetails.formats.empty() && !swapchainDetails.presentModes.empty();
+    }
 
     return dProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
         dFeatures.geometryShader && FindQueueFamilies(requestedPhysicalDevice).IsComplete()
-        && extensionSupport;
+        && hasExtensionSupport && isAdequateSwapchain;
 }
 
 bool HelloTriangleApp::CheckDeviceExtensionSupport(VkPhysicalDevice requestedPhysicalDevice)
@@ -329,6 +336,30 @@ QueueFamilyIndices HelloTriangleApp::FindQueueFamilies(VkPhysicalDevice requeste
     return queueFamilyIndices;
 }
 
+SwapChainSupportDetails HelloTriangleApp::querySwapChainSupport(VkPhysicalDevice device)
+{
+    SwapChainSupportDetails details;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+    uint32_t formatsCount = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatsCount, nullptr);
+    if (formatsCount > 0)
+    {
+        details.formats.resize(formatsCount);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatsCount, details.formats.data());
+    }
+
+    uint32_t presentationModesCount = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentationModesCount, nullptr);
+    if (presentationModesCount > 0)
+    {
+        details.presentModes.resize(presentationModesCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentationModesCount, details.presentModes.data());
+    }
+
+    return details;
+}
+
 void HelloTriangleApp::CreateLogicalDevice()
 {
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
@@ -380,6 +411,32 @@ void HelloTriangleApp::GetLogicalDeviceQueues()
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
     vkGetDeviceQueue(logicalDevice, queueFamilyIndices.graphicsFamily.value(), 0, &graphicsQueue);
     vkGetDeviceQueue(logicalDevice, queueFamilyIndices.presentationFamily.value(), 0, &presentationQueue);
+}
+
+VkSurfaceFormatKHR HelloTriangleApp::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+{
+    for (VkSurfaceFormatKHR availableSurfaceFormat : availableFormats) 
+    {
+        if (availableSurfaceFormat.format == VK_FORMAT_B8G8R8A8_SRGB
+            && availableSurfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            return availableSurfaceFormat;
+        }
+    }
+    
+    return availableFormats[0];
+}
+
+VkPresentModeKHR HelloTriangleApp::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+{
+    for (VkPresentModeKHR availablePresentMode : availablePresentModes)
+    {
+        if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            return availablePresentMode;
+        }
+    }
+    return VK_PRESENT_MODE_FIFO_KHR;
 }
 
 void HelloTriangleApp::MainLoop() 
