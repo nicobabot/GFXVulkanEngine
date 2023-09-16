@@ -28,11 +28,13 @@ static LogVerbosity logDebug = LogVerbosity::VERBOSE;
 static bool enableValidationLayers = true;
 #endif //#else //#if NDEBUG
 
-const std::vector<const char*> validationLayers {
+const std::vector<const char*> validationLayers 
+{
     "VK_LAYER_KHRONOS_validation",
 };
 
-const std::vector<const char*> deviceExtensionsRequired {
+const std::vector<const char*> deviceExtensionsRequired 
+{
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
@@ -47,18 +49,25 @@ struct QueueFamilyIndices
     }
 };
 
+struct SwapChainSupportDetails 
+{
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> presentModes;
+};
+
 class HelloTriangleApp
 {
 //Variables
 private:
-GLFWwindow *window;
-VkInstance instance;
-VkDebugUtilsMessengerEXT debugMessenger;
-VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-VkDevice logicalDevice;
-VkQueue graphicsQueue;
-VkQueue presentationQueue;
-VkSurfaceKHR surface;
+    GLFWwindow *window;
+    VkInstance instance;
+    VkDebugUtilsMessengerEXT debugMessenger;
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkDevice logicalDevice;
+    VkQueue graphicsQueue;
+    VkQueue presentationQueue;
+    VkSurfaceKHR surface;
 
 //Methods
 public:

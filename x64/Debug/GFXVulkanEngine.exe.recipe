@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Users\nicob\source\repos\GFXVulkanEngine\x64\Debug\GFXVulkanEngine.exe</FullPath>
+      <FullPath>C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\GFXVulkanEngine.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />
