@@ -437,6 +437,7 @@ void HelloTriangleApp::CreateSwapChain()
     createSwapChainInfo.presentMode = swapChainPesent;
     createSwapChainInfo.imageExtent = swapChainExtent2D;
     createSwapChainInfo.imageArrayLayers = 1;
+    createSwapChainInfo.minImageCount = imageCount;
     //VK_IMAGE_USAGE_TRANSFER_DST_BIT -> to render to a separate image first to perform operations (post processing)
     createSwapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
