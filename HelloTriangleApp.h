@@ -56,7 +56,6 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-
 class HelloTriangleApp
 {
 //Variables
