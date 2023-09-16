@@ -419,8 +419,9 @@ void HelloTriangleApp::CreateSwapChain()
     SwapChainSupportDetails swapChainDetails = QuerySwapChainSupport(physicalDevice);
 
     VkSurfaceFormatKHR swapChainFormat = ChooseSwapSurfaceFormat(swapChainDetails.formats);
+    swapChainImageFormat = swapChainFormat.format;
     VkPresentModeKHR swapChainPesent = ChooseSwapPresentMode(swapChainDetails.presentModes);
-    VkExtent2D swapChainExtent2D = ChooseSwapExtent(swapChainDetails.capabilities);
+    swapChainExtent = ChooseSwapExtent(swapChainDetails.capabilities);
 
     uint32_t imageCount = swapChainDetails.capabilities.minImageCount + 1;
     uint32_t maxImageInSwapChain = swapChainDetails.capabilities.maxImageCount;
@@ -435,7 +436,7 @@ void HelloTriangleApp::CreateSwapChain()
     createSwapChainInfo.imageFormat = swapChainFormat.format;
     createSwapChainInfo.imageColorSpace = swapChainFormat.colorSpace;
     createSwapChainInfo.presentMode = swapChainPesent;
-    createSwapChainInfo.imageExtent = swapChainExtent2D;
+    createSwapChainInfo.imageExtent = swapChainExtent;
     createSwapChainInfo.imageArrayLayers = 1;
     createSwapChainInfo.minImageCount = imageCount;
     //VK_IMAGE_USAGE_TRANSFER_DST_BIT -> to render to a separate image first to perform operations (post processing)
@@ -470,6 +471,11 @@ void HelloTriangleApp::CreateSwapChain()
     {
         throw std::runtime_error("Error creating SwapChain");
     }
+
+    uint32_t swapchainImagesCount = 0;
+    vkGetSwapchainImagesKHR(logicalDevice, swapChain, &swapchainImagesCount, nullptr);
+    swapChainImages.resize(swapchainImagesCount);
+    vkGetSwapchainImagesKHR(logicalDevice, swapChain, &swapchainImagesCount, swapChainImages.data());
 }
 
 VkSurfaceFormatKHR HelloTriangleApp::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
