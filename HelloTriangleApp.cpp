@@ -565,7 +565,48 @@ void HelloTriangleApp::CreateSwapChainImageViews()
 
 void HelloTriangleApp::CreateGraphicsPipeline()
 {
+    std::vector<char> vertexShader = ReadFile("CompiledShaders/vert.spv");
+    std::vector<char> fragmentShader = ReadFile("CompiledShaders/frag.spv");
+
+    VkShaderModule vertexShaderModule = CreateShaderModule(vertexShader);
+    VkShaderModule fragmentShaderModule = CreateShaderModule(fragmentShader);
+
+    VkPipelineShaderStageCreateInfo vertexPipelineCreateInfo{};
+    vertexPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertexPipelineCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertexPipelineCreateInfo.module = vertexShaderModule;
+    vertexPipelineCreateInfo.pName = "main";
+    vertexPipelineCreateInfo.pSpecializationInfo = nullptr;
+
+    VkPipelineShaderStageCreateInfo fragmentPipelineCreateInfo{};
+    fragmentPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragmentPipelineCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragmentPipelineCreateInfo.module = fragmentShaderModule;
+    fragmentPipelineCreateInfo.pName = "main";
+    fragmentPipelineCreateInfo.pSpecializationInfo = nullptr;
+
+    VkPipelineShaderStageCreateInfo shaderStages[] {vertexPipelineCreateInfo, fragmentPipelineCreateInfo};
+
+
+
+    vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
+    vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
+}
+
+VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& code)
+{
+    VkShaderModuleCreateInfo shaderModuleCreateInfo{};
+    shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shaderModuleCreateInfo.codeSize = code.size();
+    shaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+    VkShaderModule shaderModule;
+    if (vkCreateShaderModule(logicalDevice, &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("Error creating shader module!");
+    }
     
+    return shaderModule;
 }
 
 void HelloTriangleApp::MainLoop() 

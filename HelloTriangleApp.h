@@ -7,6 +7,8 @@
 #include <set>
 #include <algorithm>
 
+#include "Utils.h"
+
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
 #define WINDOW_NAME "GFXVulkanEngine"
@@ -106,6 +108,7 @@ private:
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     void CreateSwapChainImageViews();
     void CreateGraphicsPipeline();
+    VkShaderModule CreateShaderModule(const std::vector<char>& code);
     void MainLoop();
     void Cleanup();
 };
