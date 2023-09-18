@@ -588,6 +588,18 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     VkPipelineShaderStageCreateInfo shaderStages[] {vertexPipelineCreateInfo, fragmentPipelineCreateInfo};
 
 
+    VkPipelineRasterizationStateCreateInfo rasterizationStageCreateInfo{};
+    rasterizationStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizationStageCreateInfo.rasterizerDiscardEnable = VK_FALSE;
+    rasterizationStageCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizationStageCreateInfo.lineWidth = 1.0f;
+    rasterizationStageCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizationStageCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    //Useful for shadowmaps
+    rasterizationStageCreateInfo.depthClampEnable = VK_FALSE;
+    rasterizationStageCreateInfo.depthBiasConstantFactor= 0.0f;
+    rasterizationStageCreateInfo.depthBiasClamp = 0.0f;
+    rasterizationStageCreateInfo.depthBiasSlopeFactor = 0.0f;
 
     vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
     vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
