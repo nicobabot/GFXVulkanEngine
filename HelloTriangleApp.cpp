@@ -27,6 +27,7 @@ void HelloTriangleApp::InitVulkan()
     GetLogicalDeviceQueues();
     CreateSwapChain();
     CreateSwapChainImageViews();
+    CreateRenderPass();
     CreateGraphicsPipeline();
 }
 
@@ -563,6 +564,39 @@ void HelloTriangleApp::CreateSwapChainImageViews()
 
 }
 
+void HelloTriangleApp::CreateRenderPass()
+{
+    VkAttachmentDescription colorAttatchmentDescr{};
+    colorAttatchmentDescr.format = swapChainImageFormat;
+    colorAttatchmentDescr.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttatchmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; 
+    colorAttatchmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttatchmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttatchmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttatchmentDescr.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttatchmentDescr.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachment{};
+    colorAttachment.attachment = 0;
+    colorAttachment.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpassDescr{};
+    subpassDescr.colorAttachmentCount = 1 ;
+    subpassDescr.pColorAttachments = &colorAttachment;
+
+    VkRenderPassCreateInfo renderPassCreateInfo{};
+    renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassCreateInfo.attachmentCount = 1;
+    renderPassCreateInfo.pAttachments = &colorAttatchmentDescr;
+    renderPassCreateInfo.subpassCount = 1;
+    renderPassCreateInfo.pSubpasses = &subpassDescr;
+
+    if (vkCreateRenderPass(logicalDevice, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("Error creating renderpass!");
+    }
+}
+
 void HelloTriangleApp::CreateGraphicsPipeline()
 {
     std::vector<char> vertexShader = ReadFile("CompiledShaders/vert.spv");
@@ -721,6 +755,7 @@ void HelloTriangleApp::MainLoop()
 void HelloTriangleApp::Cleanup() 
 {
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
+    vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
     for (VkImageView imageView : swapChainImageViews) 
     {
         vkDestroyImageView(logicalDevice, imageView, nullptr);
