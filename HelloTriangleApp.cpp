@@ -628,18 +628,67 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     dynamicState.pDynamicStates = dynamicStates.data();
 
 
-    VkPipelineRasterizationStateCreateInfo rasterizationStageCreateInfo{};
-    rasterizationStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizationStageCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-    rasterizationStageCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizationStageCreateInfo.lineWidth = 1.0f;
-    rasterizationStageCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizationStageCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
+    rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
+    rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizationStateCreateInfo.lineWidth = 1.0f;
+    rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
     //Useful for shadowmaps
-    rasterizationStageCreateInfo.depthClampEnable = VK_FALSE;
-    rasterizationStageCreateInfo.depthBiasConstantFactor= 0.0f;
-    rasterizationStageCreateInfo.depthBiasClamp = 0.0f;
-    rasterizationStageCreateInfo.depthBiasSlopeFactor = 0.0f;
+    rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+    rasterizationStateCreateInfo.depthBiasConstantFactor= 0.0f;
+    rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
+    rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.0f;
+
+    //TODO
+    VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
+    multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;
+    multisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampleStateCreateInfo.minSampleShading = 1.0f; // Optional
+    multisampleStateCreateInfo.pSampleMask = nullptr; // Optional
+    multisampleStateCreateInfo.alphaToCoverageEnable = VK_FALSE; // Optional
+    multisampleStateCreateInfo.alphaToOneEnable = VK_FALSE; // Optional
+
+    //TODO VkPipelineDepthStencilStateCreateInfo
+
+    VkPipelineColorBlendAttachmentState colorBlendStateAttachment{};
+    colorBlendStateAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendStateAttachment.blendEnable = VK_TRUE;
+    colorBlendStateAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendStateAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendStateAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    //finalColor.rgb = newAlpha * newColor + (1 - newAlpha) * oldColor;
+    colorBlendStateAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendStateAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendStateAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+    //finalColor.a = newAlpha.a;
+
+    VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{};
+    colorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
+    colorBlendStateCreateInfo.logicOp = VK_LOGIC_OP_COPY;
+    colorBlendStateCreateInfo.attachmentCount = 1;
+    colorBlendStateCreateInfo.pAttachments = &colorBlendStateAttachment;
+    colorBlendStateCreateInfo.blendConstants[0] = 0.0f; // Optional
+    colorBlendStateCreateInfo.blendConstants[1] = 0.0f; // Optional
+    colorBlendStateCreateInfo.blendConstants[2] = 0.0f; // Optional
+    colorBlendStateCreateInfo.blendConstants[3] = 0.0f; // Optional
+
+    //TODO
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutCreateInfo.setLayoutCount = 0;
+    pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    
+    if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("Error creating pipeline layuout!");
+    }
 
     vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
     vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
@@ -671,6 +720,7 @@ void HelloTriangleApp::MainLoop()
 
 void HelloTriangleApp::Cleanup() 
 {
+    vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
     for (VkImageView imageView : swapChainImageViews) 
     {
         vkDestroyImageView(logicalDevice, imageView, nullptr);

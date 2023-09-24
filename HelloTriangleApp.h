@@ -76,6 +76,7 @@ private:
     VkExtent2D swapChainExtent;
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
+    VkPipelineLayout pipelineLayout;
 
 
 //Methods
