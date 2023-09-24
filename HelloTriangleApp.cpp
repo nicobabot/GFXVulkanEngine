@@ -29,6 +29,7 @@ void HelloTriangleApp::InitVulkan()
     CreateSwapChainImageViews();
     CreateRenderPass();
     CreateGraphicsPipeline();
+    CreateFramebuffers();
 }
 
 void HelloTriangleApp::CreateInstance()
@@ -758,6 +759,32 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
 }
 
+void HelloTriangleApp::CreateFramebuffers()
+{
+    swapchainFramebuffers.resize(swapChainImageViews.size());
+    for (int i = 0; i < swapChainImageViews.size(); ++i) 
+    {
+        VkImageView attachments[]
+        {
+            swapChainImageViews[i],
+        };
+
+        VkFramebufferCreateInfo framebufferCreateInfo{};
+        framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferCreateInfo.renderPass = renderPass;
+        framebufferCreateInfo.attachmentCount = 1;
+        framebufferCreateInfo.pAttachments = attachments;
+        framebufferCreateInfo.width = swapChainExtent.width;
+        framebufferCreateInfo.height = swapChainExtent.height;
+        framebufferCreateInfo.layers = 1;
+
+        if (vkCreateFramebuffer(logicalDevice, &framebufferCreateInfo, nullptr, &swapchainFramebuffers[i]) != VK_SUCCESS) 
+        {   
+            throw std::runtime_error("Error creating framebuffer!");
+        }
+    }
+}
+
 VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& code)
 {
     VkShaderModuleCreateInfo shaderModuleCreateInfo{};
@@ -784,6 +811,10 @@ void HelloTriangleApp::MainLoop()
 
 void HelloTriangleApp::Cleanup() 
 {
+    for (VkFramebuffer framebuffer : swapchainFramebuffers) 
+    {
+        vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
+    }
     vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
     vkDestroyRenderPass(logicalDevice, renderPass, nullptr);

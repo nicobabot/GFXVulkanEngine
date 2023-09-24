@@ -79,6 +79,7 @@ private:
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
+    std::vector<VkFramebuffer> swapchainFramebuffers;
 
 
 //Methods
@@ -112,6 +113,7 @@ private:
     void CreateSwapChainImageViews();
     void CreateRenderPass();
     void CreateGraphicsPipeline();
+    void CreateFramebuffers();
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
     void MainLoop();
     void Cleanup();
