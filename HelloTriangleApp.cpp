@@ -724,6 +724,27 @@ void HelloTriangleApp::CreateGraphicsPipeline()
         throw std::runtime_error("Error creating pipeline layuout!");
     }
 
+
+    VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
+    graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    graphicsPipelineCreateInfo.stageCount = 2;
+    graphicsPipelineCreateInfo.pStages = shaderStages;
+
+    graphicsPipelineCreateInfo.pVertexInputState = &vertexStateCreateInfo;
+    graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssemblyCreateInfo;
+    graphicsPipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
+    graphicsPipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+    graphicsPipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
+    graphicsPipelineCreateInfo.pDepthStencilState = nullptr; //TODO
+    graphicsPipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
+    graphicsPipelineCreateInfo.pDynamicState = &dynamicState;
+
+    graphicsPipelineCreateInfo.layout = pipelineLayout;
+
+    graphicsPipelineCreateInfo.renderPass = renderPass;
+    graphicsPipelineCreateInfo.subpass = 0;
+
+
     vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
     vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
 }
