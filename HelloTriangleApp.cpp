@@ -744,6 +744,15 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     graphicsPipelineCreateInfo.renderPass = renderPass;
     graphicsPipelineCreateInfo.subpass = 0;
 
+    graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+    graphicsPipelineCreateInfo.basePipelineIndex = -1;
+
+    if (vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1,
+        &graphicsPipelineCreateInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)     
+    {
+        throw std::runtime_error("Error creating graphic pipeline!");
+    }
+
 
     vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
     vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
@@ -775,6 +784,7 @@ void HelloTriangleApp::MainLoop()
 
 void HelloTriangleApp::Cleanup() 
 {
+    vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
     vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
     for (VkImageView imageView : swapChainImageViews) 
