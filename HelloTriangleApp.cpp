@@ -920,6 +920,8 @@ void HelloTriangleApp::MainLoop()
         glfwPollEvents();
         DrawFrame();
     }
+
+    vkDeviceWaitIdle(logicalDevice);
 }
 
 void HelloTriangleApp::DrawFrame()
