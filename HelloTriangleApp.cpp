@@ -32,6 +32,7 @@ void HelloTriangleApp::InitVulkan()
     CreateFramebuffers();
     CreateCommandPool();
     CreateCommandBuffer();
+    CreateSyncObjects();
 }
 
 void HelloTriangleApp::CreateInstance()
@@ -818,6 +819,22 @@ void HelloTriangleApp::CreateCommandBuffer()
 
 }
 
+void HelloTriangleApp::CreateSyncObjects()
+{
+
+    VkSemaphoreCreateInfo semaphoreCreateInfo{};
+    semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VkFenceCreateInfo fenceCreateInfo{};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+    if (vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+        vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS ||
+        vkCreateFence(logicalDevice, &fenceCreateInfo, nullptr, &inFlightFence) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating sync objects!");
+    }
+}
+
 void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
 
@@ -890,11 +907,20 @@ void HelloTriangleApp::MainLoop()
     while (!glfwWindowShouldClose(window)) 
     {
         glfwPollEvents();
+        DrawFrame();
     }
+}
+
+void HelloTriangleApp::DrawFrame()
+{
+    
 }
 
 void HelloTriangleApp::Cleanup() 
 {
+    vkDestroySemaphore(logicalDevice, imageAvailableSemaphore, nullptr);
+    vkDestroySemaphore(logicalDevice, renderFinishedSemaphore, nullptr);
+    vkDestroyFence(logicalDevice, inFlightFence, nullptr);
     vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
     for (VkFramebuffer framebuffer : swapchainFramebuffers) 
     {

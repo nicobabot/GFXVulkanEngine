@@ -82,6 +82,9 @@ private:
     std::vector<VkFramebuffer> swapchainFramebuffers;
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
+    VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderFinishedSemaphore;
+    VkFence inFlightFence;
 
 
 //Methods
@@ -118,9 +121,11 @@ private:
     void CreateFramebuffers();
     void CreateCommandPool();
     void CreateCommandBuffer();
+    void CreateSyncObjects();
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
     void MainLoop();
+    void DrawFrame();
     void Cleanup();
 };
 
