@@ -30,6 +30,8 @@ void HelloTriangleApp::InitVulkan()
     CreateRenderPass();
     CreateGraphicsPipeline();
     CreateFramebuffers();
+    CreateCommandPool();
+    CreateCommandBuffer();
 }
 
 void HelloTriangleApp::CreateInstance()
@@ -785,6 +787,64 @@ void HelloTriangleApp::CreateFramebuffers()
     }
 }
 
+void HelloTriangleApp::CreateCommandPool()
+{
+    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
+
+    VkCommandPoolCreateInfo commandoPoolCreateInfo{};
+    commandoPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    commandoPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    commandoPoolCreateInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+
+    if (vkCreateCommandPool(logicalDevice, &commandoPoolCreateInfo, nullptr, &commandPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating command pool!");
+    }
+
+}
+
+void HelloTriangleApp::CreateCommandBuffer()
+{   
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
+    commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandBufferAllocateInfo.commandPool = commandPool;
+    commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandBufferAllocateInfo.commandBufferCount = 1;
+
+    if(vkAllocateCommandBuffers(logicalDevice, &commandBufferAllocateInfo, &commandBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating command buffer!");
+    }
+
+}
+
+void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+{
+
+    VkCommandBufferBeginInfo commandBufferBeginInfo{};
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = 0;
+    commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+    if (vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("Error creating command buffer!");
+    }
+
+    VkRenderPassBeginInfo renderPassBeginInfo{};
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.renderPass = renderPass;
+    renderPassBeginInfo.framebuffer = swapchainFramebuffers[imageIndex];
+    renderPassBeginInfo.renderArea.offset = {0,0};
+    renderPassBeginInfo.renderArea.extent = swapChainExtent;
+    VkClearValue clearColor = {{{0.0f,0.0f,0.0f,1.0f}}};
+    renderPassBeginInfo.clearValueCount = 1;
+    renderPassBeginInfo.pClearValues = &clearColor;
+
+    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+}
+
 VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& code)
 {
     VkShaderModuleCreateInfo shaderModuleCreateInfo{};
@@ -811,6 +871,7 @@ void HelloTriangleApp::MainLoop()
 
 void HelloTriangleApp::Cleanup() 
 {
+    vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
     for (VkFramebuffer framebuffer : swapchainFramebuffers) 
     {
         vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
