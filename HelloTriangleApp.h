@@ -16,6 +16,8 @@
 #define APP_VERSION VK_MAKE_VERSION(0,0,1)
 #define VULKAN_API_VERSION VK_API_VERSION_1_0
 
+#define MAX_FRAMES_IN_FLIGHT 2
+
 enum LogVerbosity 
 {
     NONE = 0,
@@ -81,10 +83,11 @@ private:
     VkPipeline graphicsPipeline;
     std::vector<VkFramebuffer> swapchainFramebuffers;
     VkCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkFence inFlightFence;
+    std::vector<VkCommandBuffer> commandBuffers;
+    std::vector<VkSemaphore> imageAvailableSemaphores;
+    std::vector<VkSemaphore> renderFinishedSemaphores;
+    std::vector<VkFence> inFlightFences;
+    uint32_t currentFrame = 0;
 
 
 //Methods
@@ -120,7 +123,7 @@ private:
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
-    void CreateCommandBuffer();
+    void CreateCommandBuffers();
     void CreateSyncObjects();
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
