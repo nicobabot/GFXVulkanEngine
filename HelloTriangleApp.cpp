@@ -9,12 +9,24 @@ void HelloTriangleApp::Run()
     Cleanup();
 }
 
+void HelloTriangleApp::MarkNeedResize()
+{
+    framebufferResized = true;
+}
+
+static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
+{
+    HelloTriangleApp* program = reinterpret_cast<HelloTriangleApp*>(glfwGetWindowUserPointer(window));
+    program->MarkNeedResize();
+}
+
 void HelloTriangleApp::InitWindow()
 {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME, nullptr, nullptr);
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
 
 void HelloTriangleApp::InitVulkan()
@@ -936,11 +948,22 @@ void HelloTriangleApp::DrawFrame()
 {
     vkWaitForFences(logicalDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
+    uint32_t imageIndex = 0;
+    VkResult result = vkAcquireNextImageKHR(logicalDevice, swapChain, UINT64_MAX,
+    imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) 
+    {
+        RecreateSwapChain();
+        return;
+    }
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) 
+    {
+        throw std::runtime_error("Error acquiring swapchain image!");
+    }
+
     vkResetFences(logicalDevice, 1, &inFlightFences[currentFrame]);
 
-    uint32_t imageIndex = 0;
-    vkAcquireNextImageKHR(logicalDevice, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], 
-    VK_NULL_HANDLE, &imageIndex);
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
     RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
@@ -974,11 +997,30 @@ void HelloTriangleApp::DrawFrame()
 
     vkQueuePresentKHR(presentationQueue, &presentInfo);
 
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
+    {
+        framebufferResized = false;
+        RecreateSwapChain();
+        return;
+    }
+    else if (result != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error presenting swapchain image!");
+    }
+
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void HelloTriangleApp::RecreateSwapChain()
 {
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(window, &width, &height);
+    while (width == 0 || height == 0) 
+    {
+        glfwGetFramebufferSize(window, &width, &height);
+        glfwWaitEvents();
+    }
+    
     vkDeviceWaitIdle(logicalDevice);
 
     //Clear swpachain resources

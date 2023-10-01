@@ -88,11 +88,12 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
     uint32_t currentFrame = 0;
-
+    bool framebufferResized = false;
 
 //Methods
 public:
     void Run();
+    void MarkNeedResize();
 
 private:
     void InitWindow();
