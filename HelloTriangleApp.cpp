@@ -977,8 +977,35 @@ void HelloTriangleApp::DrawFrame()
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
+void HelloTriangleApp::RecreateSwapChain()
+{
+    vkDeviceWaitIdle(logicalDevice);
+
+    //Clear swpachain resources
+    CleanupSwapChain();
+    
+    //Recreate
+    CreateSwapChain();
+    CreateSwapChainImageViews();
+    CreateFramebuffers();
+}
+
+void HelloTriangleApp::CleanupSwapChain()
+{
+    for (VkFramebuffer framebuffer : swapchainFramebuffers)
+    {
+        vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
+    }
+    for (VkImageView imageView : swapChainImageViews)
+    {
+        vkDestroyImageView(logicalDevice, imageView, nullptr);
+    }
+    vkDestroySwapchainKHR(logicalDevice, swapChain, nullptr);
+}
+
 void HelloTriangleApp::Cleanup() 
 {
+    CleanupSwapChain();
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) 
     {
         vkDestroySemaphore(logicalDevice, imageAvailableSemaphores[i], nullptr);
@@ -987,18 +1014,10 @@ void HelloTriangleApp::Cleanup()
     }
     
     vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
-    for (VkFramebuffer framebuffer : swapchainFramebuffers) 
-    {
-        vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
-    }
+
     vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
     vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
-    for (VkImageView imageView : swapChainImageViews) 
-    {
-        vkDestroyImageView(logicalDevice, imageView, nullptr);
-    }
-    vkDestroySwapchainKHR(logicalDevice, swapChain, nullptr);
     vkDestroyDevice(logicalDevice, nullptr);
     if (enableValidationLayers) 
     {

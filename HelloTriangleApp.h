@@ -129,6 +129,8 @@ private:
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
     void MainLoop();
     void DrawFrame();
+    void RecreateSwapChain();
+    void CleanupSwapChain();
     void Cleanup();
 };
 
