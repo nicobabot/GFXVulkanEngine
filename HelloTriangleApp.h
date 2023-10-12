@@ -6,8 +6,10 @@
 #include <optional>
 #include <set>
 #include <algorithm>
+#include <array>
 
 #include "Utils.h"
+#include "gfxMaths.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800

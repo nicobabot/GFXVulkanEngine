@@ -647,13 +647,18 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
     VkPipelineShaderStageCreateInfo shaderStages[] {vertexPipelineCreateInfo, fragmentPipelineCreateInfo};
 
-    //TODO VERTEX INFO (now hardcoded in shader)
+    
+    VkVertexInputBindingDescription vertexBindingDescription = Vertex::GetBindingDesctiption();
+    std::array<VkVertexInputAttributeDescription, 2>
+        vertexAttributeDescription = Vertex::GetAttributeDescription();
+
     VkPipelineVertexInputStateCreateInfo vertexStateCreateInfo{};
     vertexStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexStateCreateInfo.pVertexBindingDescriptions = nullptr;
-    vertexStateCreateInfo.vertexBindingDescriptionCount = 0;
-    vertexStateCreateInfo.pVertexAttributeDescriptions = nullptr;
-    vertexStateCreateInfo.vertexAttributeDescriptionCount = 0;
+    vertexStateCreateInfo.pVertexBindingDescriptions = &vertexBindingDescription;
+    vertexStateCreateInfo.vertexBindingDescriptionCount = 1;
+    vertexStateCreateInfo.pVertexAttributeDescriptions = vertexAttributeDescription.data();
+    vertexStateCreateInfo.vertexAttributeDescriptionCount = 
+        static_cast<uint32_t>(vertexAttributeDescription.size());
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo{};
     inputAssemblyCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

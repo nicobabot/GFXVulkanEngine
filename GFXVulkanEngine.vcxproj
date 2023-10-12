@@ -153,6 +153,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="HelloTriangleApp.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
