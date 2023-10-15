@@ -763,7 +763,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     graphicsPipelineCreateInfo.stageCount = 2;
     graphicsPipelineCreateInfo.pStages = shaderStages;
 
-    //graphicsPipelineCreateInfo.pVertexInputState = &vertexStateCreateInfo;
+    graphicsPipelineCreateInfo.pVertexInputState = &vertexStateCreateInfo;
     graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssemblyCreateInfo;
     graphicsPipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
     graphicsPipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
