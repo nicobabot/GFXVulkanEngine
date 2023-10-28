@@ -128,6 +128,8 @@ private:
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
+    void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
+        VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
     void CreateVertexBuffers();
     void CreateCommandBuffers();
     void CreateSyncObjects();

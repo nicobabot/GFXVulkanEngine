@@ -833,39 +833,48 @@ void HelloTriangleApp::CreateCommandPool()
 
 }
 
-void HelloTriangleApp::CreateVertexBuffers()
+void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
+    VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory)
 {
     VkBufferCreateInfo createBuffer{};
     createBuffer.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createBuffer.size = sizeof(vertices[0]) * vertices.size();
-    createBuffer.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    createBuffer.size = size;
+    createBuffer.usage = usageFlags;
     createBuffer.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if(vkCreateBuffer(logicalDevice, &createBuffer, nullptr, &vertexBuffer) != VK_SUCCESS )
+    if (vkCreateBuffer(logicalDevice, &createBuffer, nullptr, &newBuffer) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating vertex buffer!");
     }
 
     VkMemoryRequirements bufferMemoryRequirements;
-    vkGetBufferMemoryRequirements(logicalDevice, vertexBuffer, &bufferMemoryRequirements);
+    vkGetBufferMemoryRequirements(logicalDevice, newBuffer, &bufferMemoryRequirements);
 
     //FindMemoryType
     VkMemoryAllocateInfo allocateMemory{};
     allocateMemory.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocateMemory.allocationSize = bufferMemoryRequirements.size;
-    allocateMemory.memoryTypeIndex = FindMemoryType(bufferMemoryRequirements.memoryTypeBits, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    allocateMemory.memoryTypeIndex = FindMemoryType(bufferMemoryRequirements.memoryTypeBits,
+        memoryFlags);
 
-    if (vkAllocateMemory(logicalDevice, &allocateMemory, nullptr, &vertexBufferMemory) != VK_SUCCESS) 
+    if (vkAllocateMemory(logicalDevice, &allocateMemory, nullptr, &bufferMemory) != VK_SUCCESS)
     {
         throw std::runtime_error("Error allocating vertex buffer memory");
     }
 
-    vkBindBufferMemory(logicalDevice, vertexBuffer, vertexBufferMemory, 0);
+    vkBindBufferMemory(logicalDevice, newBuffer, bufferMemory, 0);
+}
+
+void HelloTriangleApp::CreateVertexBuffers()
+{
+    VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+    CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+        vertexBuffer, vertexBufferMemory);
 
     void* data;
-    vkMapMemory(logicalDevice, vertexBufferMemory, 0, createBuffer.size, 0,  &data);
-    memcpy(data, vertices.data(), (size_t)createBuffer.size);
+    vkMapMemory(logicalDevice, vertexBufferMemory, 0, vertexBufferSize, 0,  &data);
+    memcpy(data, vertices.data(), (size_t)vertexBufferSize);
     vkUnmapMemory(logicalDevice, vertexBufferMemory);
 
 }
