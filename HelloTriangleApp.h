@@ -63,6 +63,9 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
+//TODO: Add/Create memory allocator
+//https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/
+
 class HelloTriangleApp
 {
 //Variables
@@ -85,10 +88,14 @@ private:
     VkPipeline graphicsPipeline;
     std::vector<VkFramebuffer> swapchainFramebuffers;
     VkCommandPool commandPool;
+    //TODO: store vertex + index in the same buffer for memory aliasing
+    //https://developer.nvidia.com/vulkan-memory-management 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -133,6 +140,7 @@ private:
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
     void CreateVertexBuffers();
+    void CreateIndexBuffers();
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void CreateCommandBuffers();
     void CreateSyncObjects();
@@ -143,6 +151,7 @@ private:
     void DrawFrame();
     void RecreateSwapChain();
     void CleanupSwapChain();
+    void CleanupBuffers();
     void Cleanup();
 };
 
