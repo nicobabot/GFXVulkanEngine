@@ -1331,7 +1331,6 @@ void HelloTriangleApp::CleanupBuffers()
         vkDestroyBuffer(logicalDevice, uniformBuffers[i], nullptr);
         vkFreeMemory(logicalDevice, uniformBuffersMemory[i], nullptr);
     }
-    vkDestroyDescriptorSetLayout(logicalDevice, descriptorSetLayout, nullptr);
 }
 
 void HelloTriangleApp::Cleanup() 
