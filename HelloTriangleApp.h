@@ -84,6 +84,7 @@ private:
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
     VkRenderPass renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
     std::vector<VkFramebuffer> swapchainFramebuffers;
@@ -96,6 +97,11 @@ private:
     VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
+    std::vector<VkBuffer> uniformBuffers;
+    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    std::vector<void*> uniformBuffersMapped;
+    VkDescriptorPool descriptorPool;
+    std::vector<VkDescriptorSet> descriptorSets;
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -134,6 +140,9 @@ private:
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     void CreateSwapChainImageViews();
     void CreateRenderPass();
+    void CreateDescriptorSetLayout();
+    void CreateDescriptorPool();
+    void CreateDescriptorSets();
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
@@ -141,6 +150,7 @@ private:
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
     void CreateVertexBuffers();
     void CreateIndexBuffers();
+    void CreateUniformBuffers();
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void CreateCommandBuffers();
     void CreateSyncObjects();
@@ -148,6 +158,7 @@ private:
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryFlags);
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
     void MainLoop();
+    void UpdateUniformBuffers(uint32_t currentImage);
     void DrawFrame();
     void RecreateSwapChain();
     void CleanupSwapChain();
