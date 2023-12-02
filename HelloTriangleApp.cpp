@@ -676,7 +676,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
     
     VkVertexInputBindingDescription vertexBindingDescription = Vertex::GetBindingDesctiption();
-    std::array<VkVertexInputAttributeDescription, 2>
+    std::array<VkVertexInputAttributeDescription, 3>
         vertexAttributeDescription = Vertex::GetAttributeDescription();
 
     VkPipelineVertexInputStateCreateInfo vertexStateCreateInfo{};
