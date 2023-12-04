@@ -38,6 +38,20 @@ void InputHandler::ReactToEvents(GLFWwindow &window)
 		position.z -= increaseValue;
 	}
 
+	static bool debugInputPressed;
+	if (glfwGetKey(&window, GLFW_KEY_GRAVE_ACCENT) == GLFW_PRESS)
+	{
+		debugInputPressed = true;
+	}
+	if (glfwGetKey(&window, GLFW_KEY_GRAVE_ACCENT) == GLFW_RELEASE)
+	{
+		if (debugInputPressed) 
+		{
+			isDebugEnabled = !isDebugEnabled;
+			debugInputPressed = false;
+		}
+	}
+
 }
 
 void InputHandler::CompileShaders()
@@ -48,4 +62,9 @@ void InputHandler::CompileShaders()
 glm::vec3 InputHandler::GetPosition()
 {
 	return position;
+}
+
+bool InputHandler::IsDebugEnabled()
+{
+	return isDebugEnabled;
 }

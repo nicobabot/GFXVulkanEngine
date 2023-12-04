@@ -1212,12 +1212,14 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     time = 1;
 
     UniformBufferObject ubo{};
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(0,0,1));
+    ubo.modelM = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(0,0,1));
     glm::vec3 eyePos = inputHandler.GetPosition();
-    ubo.view = glm::lookAt(eyePos, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
-    ubo.proj = glm::perspective(glm::radians(45.0f), 
+    ubo.viewPos = eyePos;
+    ubo.viewM = glm::lookAt(eyePos, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
+    ubo.projM = glm::perspective(glm::radians(45.0f), 
         swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
-    ubo.proj[1][1] *= -1;
+    ubo.projM[1][1] *= -1;
+    ubo.debugUtil = inputHandler.IsDebugEnabled() ? 1:0;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }

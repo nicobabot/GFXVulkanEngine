@@ -9,8 +9,10 @@ class InputHandler
 	void ReactToEvents(GLFWwindow& window);
 	void CompileShaders();
 	glm::vec3 GetPosition();
+	bool IsDebugEnabled();
 
 	private:
 	glm::vec3 position;
+	bool isDebugEnabled = false;
 };
 
