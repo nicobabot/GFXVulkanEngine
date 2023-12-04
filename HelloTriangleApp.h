@@ -11,6 +11,8 @@
 #include "Utils.h"
 #include "gfxMaths.h"
 
+#include "InputHandler.h"
+
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
 #define WINDOW_NAME "GFXVulkanEngine"
@@ -108,6 +110,8 @@ private:
     std::vector<VkFence> inFlightFences;
     uint32_t currentFrame = 0;
     bool framebufferResized = false;
+
+    InputHandler inputHandler;
 
 //Methods
 public:

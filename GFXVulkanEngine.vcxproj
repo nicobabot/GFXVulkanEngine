@@ -150,11 +150,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="HelloTriangleApp.cpp" />
+    <ClCompile Include="InputHandler.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ColorsDef.h" />
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="HelloTriangleApp.h" />
+    <ClInclude Include="InputHandler.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>

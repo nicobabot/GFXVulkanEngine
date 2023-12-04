@@ -51,6 +51,7 @@ void HelloTriangleApp::InitVulkan()
     CreateDescriptorSets();
     CreateCommandBuffers();
     CreateSyncObjects();
+    inputHandler.Init();
 }
 
 void HelloTriangleApp::CreateInstance()
@@ -652,6 +653,8 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
 
 void HelloTriangleApp::CreateGraphicsPipeline()
 {
+    inputHandler.CompileShaders();
+
     std::vector<char> vertexShader = ReadFile("CompiledShaders/vert.spv");
     std::vector<char> fragmentShader = ReadFile("CompiledShaders/frag.spv");
 
@@ -1191,6 +1194,7 @@ void HelloTriangleApp::MainLoop()
     while (!glfwWindowShouldClose(window)) 
     {
         glfwPollEvents();
+        inputHandler.ReactToEvents(*window);
         DrawFrame();
     }
 
@@ -1205,9 +1209,12 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     float time = std::chrono::duration<float, 
         std::chrono::seconds::period>(startTime - currentTime).count();
 
+    time = 1;
+
     UniformBufferObject ubo{};
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0,0,1));
-    ubo.view = glm::lookAt(glm::vec3(2.0f,2.0f,2.0f), glm::vec3(0,0,0), glm::vec3(0,0,1));
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(0,0,1));
+    glm::vec3 eyePos = inputHandler.GetPosition();
+    ubo.view = glm::lookAt(eyePos, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
     ubo.proj = glm::perspective(glm::radians(45.0f), 
         swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
     ubo.proj[1][1] *= -1;
