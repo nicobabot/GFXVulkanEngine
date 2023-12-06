@@ -45,6 +45,7 @@ void HelloTriangleApp::InitVulkan()
     CreateGraphicsPipeline();
     CreateFramebuffers();
     CreateCommandPool();
+    CreateTextureImage();
     CreateVertexBuffers();
     CreateIndexBuffers();
     CreateUniformBuffers();
@@ -862,6 +863,42 @@ void HelloTriangleApp::CreateCommandPool()
         throw std::runtime_error("Error creating command pool!");
     }
 
+}
+
+void HelloTriangleApp::CreateTextureImage()
+{
+    int texWidth, texHeight, texChannels;
+    stbi_uc* pixels = stbi_load("Textures/texture.jpg", 
+        &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+    if (pixels == nullptr) 
+    {
+        throw std::runtime_error("Error loading image!");
+    }
+
+    VkDeviceSize imageSize = texWidth * texHeight * 4;
+    VkBuffer stagingBuffer;
+    VkDeviceMemory staginBufferMemory;
+    CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer, staginBufferMemory);
+
+    void* data;
+    vkMapMemory(logicalDevice, staginBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkUnmapMemory(logicalDevice, staginBufferMemory);
+
+    stbi_image_free(pixels);
+
+    VkImageCreateInfo imageCreateInfo{};
+    imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageCreateInfo.extent.width = static_cast<uint32_t>(texWidth);
+    imageCreateInfo.extent.height = static_cast<uint32_t>(texHeight);
+    imageCreateInfo.extent.depth = 1;
+    imageCreateInfo.arrayLayers = 1;
+    imageCreateInfo.mipLevels = 1;
+    imageCreateInfo.format = VK_FORMAT_R8G8B8_SRGB;
 }
 
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
