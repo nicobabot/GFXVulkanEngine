@@ -52,6 +52,11 @@ void InputHandler::ReactToEvents(GLFWwindow &window)
 		}
 	}
 
+	if (glfwGetKey(&window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	{
+		wantToExit = true;
+	}
+
 }
 
 void InputHandler::CompileShaders()
@@ -67,4 +72,9 @@ glm::vec3 InputHandler::GetPosition()
 bool InputHandler::IsDebugEnabled()
 {
 	return isDebugEnabled;
+}
+
+bool InputHandler::WantToExit()
+{
+	return wantToExit;
 }

@@ -8,7 +8,7 @@ layout(location = 4) flat in int debugUtilF;
 
 layout(location = 0) out vec4 outColor;
 
-void main() 
+vec4 DirectionalLight()
 {
     vec3 lightPos = vec3(1,0,1);
     vec3 lightDir = normalize(lightPos - fragPos );
@@ -26,5 +26,37 @@ void main()
     }
 
     vec4 finalColor = vec4((ambientColor + diffuseColor) * fragColor + specularColor ,1);
+    return finalColor;
+}
+
+vec4 SpotLight()
+{
+    vec3 lightPos = vec3(-2,0,4);
+    vec3 lightDir = normalize(lightPos - fragPos );
+    float distance = length(lightPos - fragPos );
+
+    float ambientColor = 0.0085;
+    float diffuseColor = max(dot(normal,lightDir), 0);
+    float constant = 1.0f;
+    float linear = 0.35f;
+    float quadratic = 0.44f;
+
+    float attenuation = 1.0f/(constant + linear * distance + quadratic * (distance*distance));
+
+
+    ambientColor *= attenuation;
+    diffuseColor *= attenuation;
+
+    vec4 finalColor = vec4((ambientColor + diffuseColor) * fragColor ,1);
+    return finalColor;
+
+}
+
+void main() 
+{
+    vec4 finalColor = DirectionalLight();
+
+    //finalColor = SpotLight();
+
     outColor = finalColor;
 }

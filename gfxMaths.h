@@ -95,6 +95,11 @@ const std::vector<Vertex> vertices =
 	{{-0.5, 0.5, 0.5},	{-1.0f, 0.0f, 0.0f}, WHITE},
 	{{-0.5, 0.5, -0.5}, {-1.0f, 0.0f, 0.0f}, WHITE},
 
+		{ {-1, 1, -1}, { 0.0f, 0.0f, 1.0f }, WHITE},
+	{ {-1, -1, -1},	{0.0f, 0.0f, 1.0f}, WHITE },
+	{ {1, -1, -1},	{0.0f, 0.0f, 1.0f}, WHITE },
+	{ {1, 1, -1},	{0.0f, 0.0f, 1.0f}, WHITE },
+
 };
 
 const std::vector<uint16_t> indices =
@@ -110,8 +115,26 @@ const std::vector<uint16_t> indices =
 	//Right
 	16,17,18,18,19,16,
 	//Left
-	20,21,22,22,23,20
+	20,21,22,22,23,20,
+
+	24,25,26,26,27,24
 };
+
+/*const std::vector<Vertex> vertices =
+{
+	//----PLANE----
+
+	{ {-1, 1, -1}, { 0.0f, 0.0f, 1.0f }, WHITE},
+	{ {-1, -1, -1},	{0.0f, 0.0f, 1.0f}, WHITE },
+	{ {1, -1, -1},	{0.0f, 0.0f, 1.0f}, WHITE },
+	{ {1, 1, -1},	{0.0f, 0.0f, 1.0f}, WHITE },
+};
+
+const std::vector<uint16_t> indices =
+{
+	//Front
+	0,1,2,2,3,0,
+};*/
 
 struct UniformBufferObject 
 {

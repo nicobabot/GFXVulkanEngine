@@ -1,8 +1,11 @@
 #include "HelloTriangleApp.h"
-
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 void HelloTriangleApp::Run()
 {
+    int texWidth, texHeight, texChannels;
+    stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     InitWindow();
     InitVulkan();
     MainLoop();
@@ -1191,7 +1194,7 @@ VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& cod
 
 void HelloTriangleApp::MainLoop() 
 {
-    while (!glfwWindowShouldClose(window)) 
+    while (!glfwWindowShouldClose(window) && !inputHandler.WantToExit()) 
     {
         glfwPollEvents();
         inputHandler.ReactToEvents(*window);
@@ -1217,7 +1220,7 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     ubo.viewPos = eyePos;
     ubo.viewM = glm::lookAt(eyePos, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
     ubo.projM = glm::perspective(glm::radians(45.0f), 
-        swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+        swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 500.0f);
     ubo.projM[1][1] *= -1;
     ubo.debugUtil = inputHandler.IsDebugEnabled() ? 1:0;
 

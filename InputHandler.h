@@ -10,9 +10,11 @@ class InputHandler
 	void CompileShaders();
 	glm::vec3 GetPosition();
 	bool IsDebugEnabled();
+	bool WantToExit();
 
 	private:
 	glm::vec3 position;
 	bool isDebugEnabled = false;
+	bool wantToExit = false;
 };
 
