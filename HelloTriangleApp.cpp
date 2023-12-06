@@ -4,8 +4,6 @@
 
 void HelloTriangleApp::Run()
 {
-    int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     InitWindow();
     InitVulkan();
     MainLoop();
