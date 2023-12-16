@@ -46,6 +46,7 @@ void HelloTriangleApp::InitVulkan()
     CreateFramebuffers();
     CreateCommandPool();
     CreateTextureImage();
+    CreateTextureImageView();
     CreateVertexBuffers();
     CreateIndexBuffers();
     CreateUniformBuffers();
@@ -558,35 +559,41 @@ VkExtent2D HelloTriangleApp::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& ca
     }
 }
 
+VkImageView HelloTriangleApp::CreateImageView(VkImage image, VkFormat format)
+{
+    VkImageView newImageView;
+    VkImageViewCreateInfo imageViewCreateInfo{};
+    imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    imageViewCreateInfo.image = image;
+    imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    imageViewCreateInfo.format = format;
+
+    imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+    imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+    imageViewCreateInfo.subresourceRange.levelCount = 1;
+    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    imageViewCreateInfo.subresourceRange.layerCount = 1;
+
+    if (vkCreateImageView(logicalDevice, &imageViewCreateInfo, nullptr, &newImageView) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating image view");
+    }
+    return newImageView;
+}
+
 void HelloTriangleApp::CreateSwapChainImageViews()
 {
     uint32_t swapchainImageCount = swapChainImages.size();
     swapChainImageViews.resize(swapchainImageCount);
     for (int i = 0; i < swapchainImageCount; ++i) 
     {
-        VkImageViewCreateInfo imageViewCreateInfo{};
-        imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        imageViewCreateInfo.image = swapChainImages[i];
-        imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        imageViewCreateInfo.format = swapChainImageFormat;
-
-        imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-        imageViewCreateInfo.subresourceRange.levelCount = 1;
-        imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-        imageViewCreateInfo.subresourceRange.layerCount = 1;
-        
-        if (vkCreateImageView(logicalDevice, &imageViewCreateInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) 
-        {
-            throw std::runtime_error("Error creating image view");
-        }
+        swapChainImageViews[i] = CreateImageView(swapChainImages[i], swapChainImageFormat);
     }
-
 }
 
 void HelloTriangleApp::CreateRenderPass()
@@ -1060,6 +1067,14 @@ void HelloTriangleApp::CreateTextureImage()
     vkFreeMemory(logicalDevice, staginBufferMemory, nullptr);
 }
 
+void HelloTriangleApp::CreateTextureImageView()
+{    
+    textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+
+
+
+}
+
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
     VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory)
 {
@@ -1519,6 +1534,7 @@ void HelloTriangleApp::Cleanup()
 {
     CleanupSwapChain();
 
+    vkDestroyImageView(logicalDevice, textureImageView, nullptr);
     vkDestroyImage(logicalDevice, textureImage, nullptr);
     vkFreeMemory(logicalDevice, textureImageMemory, nullptr);
 

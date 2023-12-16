@@ -93,6 +93,7 @@ private:
     VkCommandPool commandPool;
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
+    VkImageView textureImageView;
     //TODO: store vertex + index in the same buffer for memory aliasing
     //https://developer.nvidia.com/vulkan-memory-management 
     VkBuffer stagingBuffer;
@@ -144,6 +145,7 @@ private:
     VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+    VkImageView CreateImageView(VkImage image, VkFormat format);
     void CreateSwapChainImageViews();
     void CreateRenderPass();
     void CreateDescriptorSetLayout();
@@ -159,6 +161,7 @@ private:
     void CreateTexture(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, 
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     void CreateTextureImage();
+    void CreateTextureImageView();
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
     void CreateVertexBuffers();
