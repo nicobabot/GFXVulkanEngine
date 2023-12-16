@@ -899,6 +899,31 @@ void HelloTriangleApp::EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer)
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
 }
 
+void HelloTriangleApp::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+{
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer();
+
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+
+    region.imageExtent.width = width; 
+    region.imageExtent.height = height; 
+    region.imageExtent.depth = 1; 
+
+    region.imageOffset = {0,0,0};
+
+    region.imageSubresource.aspectMask = VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+
+    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    EndSingleTimeCommandBuffer(commandBuffer);
+}
+
 void HelloTriangleApp::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
     VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer();
@@ -909,23 +934,44 @@ void HelloTriangleApp::TransitionImageLayout(VkImage image, VkFormat format, VkI
     imageMemoryBarrier.newLayout = newLayout;
     imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageMemoryBarrier.image = image;
     imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
     imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
     imageMemoryBarrier.subresourceRange.layerCount = 1;
     imageMemoryBarrier.subresourceRange.levelCount = 1;
-    //TODO
-    imageMemoryBarrier.srcAccessMask = 0;
-    imageMemoryBarrier.dstAccessMask = 0;
+    
+    VkPipelineStageFlags srcStageFlags, dstStageFlags;
+
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    {
+        imageMemoryBarrier.srcAccessMask = 0;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        srcStageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        dstStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+        && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) 
+    {
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        srcStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dstStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else
+    {
+        throw std::runtime_error("Unsupported layout transition!");
+    }
 
     vkCmdPipelineBarrier(commandBuffer,
-    /*Todo*/ 0,
-    /*Todo*/ 0, 
+    srcStageFlags,
+    dstStageFlags, 
     0, 
     0, nullptr, 
     0, nullptr, 
     1, &imageMemoryBarrier);
-
 
     EndSingleTimeCommandBuffer(commandBuffer);
 }
@@ -1001,7 +1047,17 @@ void HelloTriangleApp::CreateTextureImage()
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         textureImage, textureImageMemory);
 
+    //TODO: make this operations in one command buffer async, now are various command buffers with single task
 
+    TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, 
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    CopyBufferToImage(stagingBuffer, textureImage, 
+        static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(logicalDevice, staginBufferMemory, nullptr);
 }
 
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
@@ -1462,6 +1518,10 @@ void HelloTriangleApp::CleanupBuffers()
 void HelloTriangleApp::Cleanup() 
 {
     CleanupSwapChain();
+
+    vkDestroyImage(logicalDevice, textureImage, nullptr);
+    vkFreeMemory(logicalDevice, textureImageMemory, nullptr);
+
     CleanupBuffers();
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) 
     {
