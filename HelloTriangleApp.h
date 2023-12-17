@@ -94,6 +94,7 @@ private:
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
     VkImageView textureImageView;
+    VkSampler textureSampler;
     //TODO: store vertex + index in the same buffer for memory aliasing
     //https://developer.nvidia.com/vulkan-memory-management 
     VkBuffer stagingBuffer;
@@ -162,6 +163,7 @@ private:
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     void CreateTextureImage();
     void CreateTextureImageView();
+    void CreateTextureSampler();
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
     void CreateVertexBuffers();

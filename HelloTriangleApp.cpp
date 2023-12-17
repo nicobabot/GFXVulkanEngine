@@ -47,6 +47,7 @@ void HelloTriangleApp::InitVulkan()
     CreateCommandPool();
     CreateTextureImage();
     CreateTextureImageView();
+
     CreateVertexBuffers();
     CreateIndexBuffers();
     CreateUniformBuffers();
@@ -1070,8 +1071,42 @@ void HelloTriangleApp::CreateTextureImage()
 void HelloTriangleApp::CreateTextureImageView()
 {    
     textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+}
 
+void HelloTriangleApp::CreateTextureSampler()
+{
+    VkSamplerCreateInfo samplerCreateInfo{};
+    samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+    samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+    samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
+    VkPhysicalDeviceFeatures dFeatures;
+    vkGetPhysicalDeviceFeatures(physicalDevice, &dFeatures);
+    samplerCreateInfo.anisotropyEnable = dFeatures.samplerAnisotropy ? VK_TRUE : VK_FALSE;
+    
+    //TODO: store phys device properties in global variable instead of query here
+    VkPhysicalDeviceProperties physicalDeviceProperties;
+    vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+
+    samplerCreateInfo.maxAnisotropy = physicalDeviceProperties.limits.maxSamplerAnisotropy;
+
+    samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+
+    samplerCreateInfo.compareEnable = VK_FALSE;
+    samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+    samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerCreateInfo.mipLodBias = 0.0f;
+    samplerCreateInfo.maxLod = 0.0f;
+    samplerCreateInfo.minLod = 0.0f;
+
+    if (vkCreateSampler(logicalDevice, &samplerCreateInfo, nullptr, &textureSampler) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("Error creating sampler!");
+    }
 
 }
 
@@ -1534,6 +1569,7 @@ void HelloTriangleApp::Cleanup()
 {
     CleanupSwapChain();
 
+    vkDestroySampler(logicalDevice, textureSampler, nullptr);
     vkDestroyImageView(logicalDevice, textureImageView, nullptr);
     vkDestroyImage(logicalDevice, textureImage, nullptr);
     vkFreeMemory(logicalDevice, textureImageMemory, nullptr);
