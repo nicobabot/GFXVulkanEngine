@@ -7,8 +7,9 @@
 struct Vertex
 {
 	glm::vec3 position;
-	glm::vec3 normal;
 	glm::vec3 color;
+	glm::vec2 texCood;
+	glm::vec3 normal;
 
 	static VkVertexInputBindingDescription GetBindingDesctiption()
 	{
@@ -19,9 +20,9 @@ struct Vertex
 		return vertexInputBindingDescription;
 	}
 
-	static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescription()
+	static std::array<VkVertexInputAttributeDescription, 4> GetAttributeDescription()
 	{
-		std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+		std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
 		attributeDescriptions[0].format = VkFormat::VK_FORMAT_R32G32B32_SFLOAT;
@@ -30,12 +31,17 @@ struct Vertex
 		attributeDescriptions[1].binding = 0;
 		attributeDescriptions[1].location = 1;
 		attributeDescriptions[1].format = VkFormat::VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[1].offset = offsetof(Vertex, normal);
+		attributeDescriptions[1].offset = offsetof(Vertex, color);
 
 		attributeDescriptions[2].binding = 0;
 		attributeDescriptions[2].location = 2;
-		attributeDescriptions[2].format = VkFormat::VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[2].offset = offsetof(Vertex, color);
+		attributeDescriptions[2].format = VkFormat::VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[2].offset = offsetof(Vertex, texCood);
+
+		attributeDescriptions[3].binding = 0;
+		attributeDescriptions[3].location = 3;
+		attributeDescriptions[3].format = VkFormat::VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[3].offset = offsetof(Vertex, normal);
 
 		return attributeDescriptions;
 	}
@@ -60,45 +66,45 @@ const std::vector<uint16_t> indices =
 const std::vector<Vertex> vertices =
 {
 	//Front
-	{ {0.5, -0.5, -0.5},{0.0f, -1.0f, 0.0f}, RED},
-	{{0.5, -0.5, 0.5},	{0.0f, -1.0f, 0.0f}, RED},
-	{{-0.5, -0.5, 0.5}, {0.0f, -1.0f, 0.0f}, RED},
-	{{-0.5, -0.5, -0.5},{0.0f, -1.0f, 0.0f}, RED},
+	{{0.5, -0.5, -0.5},  RED, {1.0f, 0.0f} ,{0.0f, -1.0f, 0.0f}},
+	{{0.5, -0.5, 0.5},	 RED, {1.0f, 1.0f} ,{0.0f, -1.0f, 0.0f}},
+	{{-0.5, -0.5, 0.5},  RED, {0.0f, 1.0f} ,{0.0f, -1.0f, 0.0f}},
+	{{-0.5, -0.5, -0.5}, RED, {0.0f, 0.0f} ,{0.0f, -1.0f, 0.0f}},
 
 	//Back
-	{{-0.5, 0.5, -0.5}, {0.0f, 1.0f, 0.0f}, GREEN},
-	{{-0.5, 0.5, 0.5},	{0.0f, 1.0f, 0.0f}, GREEN},
-	{{0.5, 0.5, 0.5},	{0.0f, 1.0f, 0.0f}, GREEN},
-	{{0.5, 0.5, -0.5},	{0.0f, 1.0f, 0.0f}, GREEN},
+	{{-0.5, 0.5, -0.5}, GREEN, {1.0f, 0.0f} , {0.0f, 1.0f, 0.0f}},
+	{{-0.5, 0.5, 0.5},	GREEN, {1.0f, 1.0f} , {0.0f, 1.0f, 0.0f}},
+	{{0.5, 0.5, 0.5},	GREEN, {0.0f, 1.0f} , {0.0f, 1.0f, 0.0f}},
+	{{0.5, 0.5, -0.5},	GREEN, {0.0f, 0.0f} , {0.0f, 1.0f, 0.0f}},
 
 	//Up
-	{{0.5, -0.5, 0.5},	{0.0f, 0.0f, 1.0f}, BLUE},
-	{{0.5, 0.5, 0.5},	{0.0f, 0.0f, 1.0f}, BLUE},
-	{{-0.5, 0.5, 0.5},	{0.0f, 0.0f, 1.0f}, BLUE},
-	{{-0.5, -0.5, 0.5},	{0.0f, 0.0f, 1.0f}, BLUE},
+	{{0.5, -0.5, 0.5},	BLUE, {1.0f, 0.0f} , {0.0f, 0.0f, 1.0f}},
+	{{0.5, 0.5, 0.5},	BLUE, {1.0f, 1.0f} , {0.0f, 0.0f, 1.0f}},
+	{{-0.5, 0.5, 0.5},	BLUE, {0.0f, 1.0f} , {0.0f, 0.0f, 1.0f}},
+	{{-0.5, -0.5, 0.5},	BLUE, {0.0f, 0.0f} , {0.0f, 0.0f, 1.0f}},
 
 	//Down
-	{{0.5, 0.5, -0.5},	{0.0f, 0.0f, -1.0f}, YELLOW},
-	{{0.5, -0.5, -0.5},	{0.0f, 0.0f, -1.0f}, YELLOW},
-	{{-0.5, -0.5, -0.5},{0.0f, 0.0f, -1.0f}, YELLOW},
-	{{-0.5, 0.5, -0.5}, {0.0f, 0.0f, -1.0f}, YELLOW},
+	{{0.5, 0.5, -0.5},	YELLOW, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
+	{{0.5, -0.5, -0.5},	YELLOW, {1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
+	{{-0.5, -0.5, -0.5},YELLOW, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
+	{{-0.5, 0.5, -0.5}, YELLOW, {0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
 	
 	////Right
-	{{0.5, 0.5, -0.5},	{1.0f, 0.0f, 0.0f}, CYAN},
-	{{0.5, 0.5, 0.5},	{1.0f, 0.0f, 0.0f}, CYAN},
-	{{0.5, -0.5, 0.5},	{1.0f, 0.0f, 0.0f}, CYAN},
-	{{0.5, -0.5, -0.5},	{1.0f, 0.0f, 0.0f}, CYAN},
+	{{0.5, 0.5, -0.5},	CYAN, {1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5, 0.5, 0.5},	CYAN, {1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5, -0.5, 0.5},	CYAN, {0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5, -0.5, -0.5},	CYAN, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
 	
 	//Left
-	{{-0.5, -0.5, -0.5},{-1.0f, 0.0f, 0.0f}, WHITE},
-	{{-0.5, -0.5, 0.5}, {-1.0f, 0.0f, 0.0f}, WHITE},
-	{{-0.5, 0.5, 0.5},	{-1.0f, 0.0f, 0.0f}, WHITE},
-	{{-0.5, 0.5, -0.5}, {-1.0f, 0.0f, 0.0f}, WHITE},
+	{{-0.5, -0.5, -0.5}, WHITE, {1.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}},
+	{{-0.5, -0.5, 0.5},  WHITE, {1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}},
+	{{-0.5, 0.5, 0.5},	 WHITE, {0.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}},
+	{{-0.5, 0.5, -0.5},  WHITE, {0.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}},
 
-		{ {-1, 1, -1}, { 0.0f, 0.0f, 1.0f }, WHITE},
-	{ {-1, -1, -1},	{0.0f, 0.0f, 1.0f}, WHITE },
-	{ {1, -1, -1},	{0.0f, 0.0f, 1.0f}, WHITE },
-	{ {1, 1, -1},	{0.0f, 0.0f, 1.0f}, WHITE },
+	{ {-1, 1, -1},	WHITE, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+	{ {-1, -1, -1},	WHITE, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
+	{ {1, -1, -1},	WHITE, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
+	{ {1, 1, -1},	WHITE, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
 
 };
 

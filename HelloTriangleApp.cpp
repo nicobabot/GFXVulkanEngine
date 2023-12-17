@@ -47,7 +47,7 @@ void HelloTriangleApp::InitVulkan()
     CreateCommandPool();
     CreateTextureImage();
     CreateTextureImageView();
-
+    CreateTextureSampler();
     CreateVertexBuffers();
     CreateIndexBuffers();
     CreateUniformBuffers();
@@ -649,10 +649,19 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     uboLayoutBinding.pImmutableSamplers = nullptr;
 
+    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+    samplerLayoutBinding.binding = 1;
+    samplerLayoutBinding.descriptorCount = 1;
+    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplerLayoutBinding.pImmutableSamplers = nullptr;
+    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
     VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
     descriptorSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptorSetCreateInfo.bindingCount = 1;
-    descriptorSetCreateInfo.pBindings = &uboLayoutBinding;
+    descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    descriptorSetCreateInfo.pBindings = bindings.data();
 
     if (vkCreateDescriptorSetLayout(logicalDevice, &descriptorSetCreateInfo,
         nullptr, &descriptorSetLayout) != VK_SUCCESS) 
@@ -689,7 +698,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
     
     VkVertexInputBindingDescription vertexBindingDescription = Vertex::GetBindingDesctiption();
-    std::array<VkVertexInputAttributeDescription, 3>
+    std::array<VkVertexInputAttributeDescription, 4>
         vertexAttributeDescription = Vertex::GetAttributeDescription();
 
     VkPipelineVertexInputStateCreateInfo vertexStateCreateInfo{};
@@ -1076,6 +1085,7 @@ void HelloTriangleApp::CreateTextureImageView()
 void HelloTriangleApp::CreateTextureSampler()
 {
     VkSamplerCreateInfo samplerCreateInfo{};
+    samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
     samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
     samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -1209,16 +1219,17 @@ void HelloTriangleApp::CreateUniformBuffers()
 
 void HelloTriangleApp::CreateDescriptorPool()
 {
-    VkDescriptorPoolSize descriptorPoolSize{};
-    descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorPoolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    std::array<VkDescriptorPoolSize, 2> descriptorPoolSize;
+    descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptorPoolCreateInfo.poolSizeCount = 1;
-    descriptorPoolCreateInfo.pPoolSizes = &descriptorPoolSize;
+    descriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSize.size());
+    descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSize.data();
     descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
 
     if (vkCreateDescriptorPool(logicalDevice, &descriptorPoolCreateInfo,
         nullptr, &descriptorPool) != VK_SUCCESS)
@@ -1250,20 +1261,30 @@ void HelloTriangleApp::CreateDescriptorSets()
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
-        VkWriteDescriptorSet writeDescriptorSet{};
-        writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet.dstSet = descriptorSets[i];
-        writeDescriptorSet.dstBinding = 0;
-        writeDescriptorSet.dstArrayElement = 0;
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageView = textureImageView;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.sampler = textureSampler;
 
-        writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSet.descriptorCount = 1;
+        std::array<VkWriteDescriptorSet, 2> writeDescriptorSet{};
+        writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[0].dstSet = descriptorSets[i];
+        writeDescriptorSet[0].dstBinding = 0;
+        writeDescriptorSet[0].dstArrayElement = 0;
+        writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet[0].descriptorCount = 1;
+        writeDescriptorSet[0].pBufferInfo = &bufferInfo;
 
-        writeDescriptorSet.pBufferInfo = &bufferInfo;
-        writeDescriptorSet.pImageInfo = nullptr;
-        writeDescriptorSet.pTexelBufferView = nullptr;
+        writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[1].dstSet = descriptorSets[i];
+        writeDescriptorSet[1].dstBinding = 1;
+        writeDescriptorSet[1].dstArrayElement = 0;
+        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writeDescriptorSet[1].descriptorCount = 1;
+        writeDescriptorSet[1].pImageInfo = &imageInfo;
 
-        vkUpdateDescriptorSets(logicalDevice, 1, &writeDescriptorSet, 0, nullptr);
+        vkUpdateDescriptorSets(logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
+            writeDescriptorSet.data(), 0, nullptr);
     }
 
 }
