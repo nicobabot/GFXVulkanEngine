@@ -10,7 +10,7 @@ layout(location = 5) flat in int debugUtilF;
 layout(location = 0) out vec4 outColor;
 layout(binding = 1) uniform sampler2D texSampler;
 
-vec4 DirectionalLight()
+vec4 DirectionalLight(vec4 fragmentColor)
 {
     vec3 lightPos = vec3(1,0,1);
     vec3 lightDir = normalize(lightPos - fragPos );
@@ -22,12 +22,7 @@ vec4 DirectionalLight()
     vec3 halfwayDir = normalize(lightDir + viewDir);
     float specularColor = pow(max(dot(normal, halfwayDir),0), shininess);
 
-    if(debugUtilF == 1)
-    {
-        specularColor = 0;
-    }
-
-    vec4 finalColor = vec4((ambientColor + diffuseColor) * fragColor + specularColor ,1);
+    vec4 finalColor = vec4((ambientColor + diffuseColor) * fragmentColor.rgb + specularColor ,1);
     return finalColor;
 }
 
@@ -58,16 +53,15 @@ void main()
 {
     vec4 finalColor;
     
-    if(debugUtilF != 0){
-    finalColor = vec4(fragTexCoord, 0.0, 1.0);
+    if(debugUtilF != 0)
+    {
+        finalColor = vec4(fragTexCoord, 0.0, 1.0);
     }
     else{
-    finalColor = texture(texSampler, fragTexCoord);
+        finalColor = texture(texSampler, fragTexCoord);
     }
-
-    //vec4 finalColor = DirectionalLight();
 
     //finalColor = SpotLight();
 
-    outColor = finalColor;
+    outColor = DirectionalLight(finalColor);
 }
