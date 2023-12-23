@@ -1,4 +1,5 @@
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "ColorsDef.h"
@@ -101,10 +102,10 @@ const std::vector<Vertex> vertices =
 	{{-0.5, 0.5, 0.5},	 WHITE, {0.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}},
 	{{-0.5, 0.5, -0.5},  WHITE, {0.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}},
 
-	/*{{-1, 1, -1},	WHITE, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+	{{-1, 1, -1},	WHITE, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
 	{ {-1, -1, -1},	WHITE, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
 	{ {1, -1, -1},	WHITE, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-	{ {1, 1, -1},	WHITE, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},*/
+	{ {1, 1, -1},	WHITE, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
 
 };
 
@@ -123,7 +124,7 @@ const std::vector<uint16_t> indices =
 	//Left
 	20,21,22,22,23,20,
 
-	//24,25,26,26,27,24
+	24,25,26,26,27,24
 };
 
 /*const std::vector<Vertex> vertices =

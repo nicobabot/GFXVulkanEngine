@@ -14,7 +14,7 @@ vec4 DirectionalLight(vec4 fragmentColor)
 {
     vec3 lightPos = vec3(1,0,1);
     vec3 lightDir = normalize(lightPos - fragPos );
-    float ambientColor = 0.0085;
+    float ambientColor = 0.085;
     float diffuseColor = max(dot(normal,lightDir), 0);
 
     float shininess = 32.0f;

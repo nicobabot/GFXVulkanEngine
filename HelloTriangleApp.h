@@ -91,10 +91,19 @@ private:
     VkPipeline graphicsPipeline;
     std::vector<VkFramebuffer> swapchainFramebuffers;
     VkCommandPool commandPool;
+
+    //Depth
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
+
+    //First texture
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
     VkImageView textureImageView;
+    //TODO: Make sampler not related with texture
     VkSampler textureSampler;
+
     //TODO: store vertex + index in the same buffer for memory aliasing
     //https://developer.nvidia.com/vulkan-memory-management 
     VkBuffer stagingBuffer;
@@ -146,7 +155,7 @@ private:
     VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-    VkImageView CreateImageView(VkImage image, VkFormat format);
+    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
     void CreateSwapChainImageViews();
     void CreateRenderPass();
     void CreateDescriptorSetLayout();
@@ -155,11 +164,15 @@ private:
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
+    VkFormat FindSupportedFormat(std::vector<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+    VkFormat FindDepthFormat();
+    bool HasStencilComponent(VkFormat format);
+    void CreateDepthResources();
     VkCommandBuffer BeginSingleTimeCommandBuffer();
     void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
     void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-    void CreateTexture(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, 
+    void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, 
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     void CreateTextureImage();
     void CreateTextureImageView();
