@@ -791,7 +791,8 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     VkPipelineDepthStencilStateCreateInfo depthStencilStateAttachment{};
     depthStencilStateAttachment.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencilStateAttachment.depthTestEnable = VK_TRUE;
-    depthStencilStateAttachment.stencilTestEnable = VK_TRUE;
+    //depthStencilStateAttachment.stencilTestEnable = VK_TRUE; -> WRONG!
+    depthStencilStateAttachment.depthWriteEnable = VK_TRUE;
     depthStencilStateAttachment.depthCompareOp = VK_COMPARE_OP_LESS;
     depthStencilStateAttachment.depthBoundsTestEnable = VK_FALSE;
     depthStencilStateAttachment.minDepthBounds = 0.0f;
@@ -1668,11 +1669,16 @@ void HelloTriangleApp::RecreateSwapChain()
     //Recreate
     CreateSwapChain();
     CreateSwapChainImageViews();
+    CreateDepthResources();
     CreateFramebuffers();
 }
 
 void HelloTriangleApp::CleanupSwapChain()
 {
+    vkDestroyImageView(logicalDevice, depthImageView, nullptr);
+    vkDestroyImage(logicalDevice, depthImage, nullptr);
+    vkFreeMemory(logicalDevice, depthImageMemory, nullptr);
+
     for (VkFramebuffer framebuffer : swapchainFramebuffers)
     {
         vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
