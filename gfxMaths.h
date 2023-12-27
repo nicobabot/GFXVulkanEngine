@@ -4,6 +4,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "ColorsDef.h"
 #include <chrono>
+#include <array>
+#include <vector>
+#include <vulkan/vulkan_core.h>
 
 struct Vertex
 {

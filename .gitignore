@@ -25,6 +25,9 @@ bld/
 *.o
 *.obj
 
+#Allow obj inside models folder
+!**Models/**.obj
+
 # Precompiled Headers
 *.gch
 *.pch

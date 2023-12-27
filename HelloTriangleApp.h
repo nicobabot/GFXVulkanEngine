@@ -9,9 +9,11 @@
 #include <array>
 
 #include "Utils.h"
-#include "gfxMaths.h"
 
 #include "InputHandler.h"
+//#include "gfxMaths.h"
+
+#include "ModelLoader.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
@@ -125,6 +127,7 @@ private:
     bool framebufferResized = false;
 
     InputHandler inputHandler;
+    ModelLoader modelLoader;
 
 //Methods
 public:

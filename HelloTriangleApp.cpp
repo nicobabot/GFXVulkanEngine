@@ -1,6 +1,4 @@
 #include "HelloTriangleApp.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 void HelloTriangleApp::Run()
 {
@@ -49,6 +47,7 @@ void HelloTriangleApp::InitVulkan()
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
+    modelLoader.LoadModel();
     CreateVertexBuffers();
     CreateIndexBuffers();
     CreateUniformBuffers();
@@ -1148,8 +1147,7 @@ void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, VkFormat for
 void HelloTriangleApp::CreateTextureImage()
 {
     int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load("Textures/texture.jpg", 
-        &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    unsigned char* pixels = modelLoader.LoadTexture(&texWidth, &texHeight, &texChannels);
 
     if (pixels == nullptr) 
     {
@@ -1168,7 +1166,7 @@ void HelloTriangleApp::CreateTextureImage()
     memcpy(data, pixels, static_cast<size_t>(imageSize));
     vkUnmapMemory(logicalDevice, staginBufferMemory);
 
-    stbi_image_free(pixels);
+    modelLoader.FreeTextureArrayInfo(pixels);
 
     CreateImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -1264,7 +1262,8 @@ void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageF
 
 void HelloTriangleApp::CreateVertexBuffers()
 {
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    std::vector<Vertex> modelVertices = modelLoader.vertices;
+    VkDeviceSize bufferSize = sizeof(modelVertices[0]) * modelVertices.size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1274,7 +1273,7 @@ void HelloTriangleApp::CreateVertexBuffers()
 
     void* data;
     vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0,  &data);
-    memcpy(data, vertices.data(), (size_t)bufferSize);
+    memcpy(data, modelVertices.data(), (size_t)bufferSize);
     vkUnmapMemory(logicalDevice, stagingBufferMemory);
 
     CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -1287,7 +1286,8 @@ void HelloTriangleApp::CreateVertexBuffers()
 
 void HelloTriangleApp::CreateIndexBuffers()
 {
-    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+    std::vector<uint32_t> modelIndices = modelLoader.indices; 
+    VkDeviceSize bufferSize = sizeof(modelIndices[0]) * modelIndices.size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1297,7 +1297,7 @@ void HelloTriangleApp::CreateIndexBuffers()
     
     void*data;
     vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, indices.data(), bufferSize);
+    memcpy(data, modelIndices.data(), bufferSize);
     vkUnmapMemory(logicalDevice, stagingBufferMemory);
 
     CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -1499,12 +1499,12 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
         pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(modelLoader.indices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 

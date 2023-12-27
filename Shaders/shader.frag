@@ -53,15 +53,16 @@ void main()
 {
     vec4 finalColor;
     
-    if(debugUtilF != 0)
+    /*if(debugUtilF != 0)
     {
         finalColor = vec4(fragTexCoord, 0.0, 1.0);
     }
     else{
         finalColor = texture(texSampler, fragTexCoord);
-    }
+    }*/
 
     //finalColor = SpotLight();
 
-    outColor = DirectionalLight(finalColor);
+    //outColor = DirectionalLight(finalColor);
+    outColor = texture(texSampler, fragTexCoord) * vec4(fragColor,1.0f);
 }
