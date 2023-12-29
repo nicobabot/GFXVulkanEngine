@@ -1316,7 +1316,7 @@ void HelloTriangleApp::CreateTextureSampler()
 
     samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     samplerCreateInfo.mipLodBias = 0.0f;
-    samplerCreateInfo.maxLod = 0.0f;
+    samplerCreateInfo.maxLod = static_cast<float>(mipLevels);
     samplerCreateInfo.minLod = 0.0f;
 
     if (vkCreateSampler(logicalDevice, &samplerCreateInfo, nullptr, &textureSampler) != VK_SUCCESS) 
