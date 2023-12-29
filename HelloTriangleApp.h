@@ -103,6 +103,7 @@ private:
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
     VkImageView textureImageView;
+    uint32_t mipLevels;
     //TODO: Make sampler not related with texture
     VkSampler textureSampler;
 
@@ -158,7 +159,7 @@ private:
     VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
+    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipLevels);
     void CreateSwapChainImageViews();
     void CreateRenderPass();
     void CreateDescriptorSetLayout();
@@ -174,10 +175,12 @@ private:
     VkCommandBuffer BeginSingleTimeCommandBuffer();
     void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-    void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-    void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, 
+    void TransitionImageLayout(VkImage image, VkFormat format, 
+        VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
+    void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, 
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     void CreateTextureImage();
+    void GenerateMipmaps(VkImage image, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels );
     void CreateTextureImageView();
     void CreateTextureSampler();
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
