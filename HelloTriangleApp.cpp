@@ -595,7 +595,7 @@ void HelloTriangleApp::CreateSwapChainImageViews()
     for (int i = 0; i < swapchainImageCount; ++i) 
     {
         swapChainImageViews[i] = CreateImageView(swapChainImages[i], 
-            swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
+            swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
 }
 
@@ -1191,14 +1191,24 @@ void HelloTriangleApp::CreateTextureImage()
         static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
     /*TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels);*/
-    GenerateMipmaps(textureImage, texWidth, texHeight, mipLevels);
+    GenerateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
 
     vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
     vkFreeMemory(logicalDevice, staginBufferMemory, nullptr);
 }
 
-void HelloTriangleApp::GenerateMipmaps(VkImage image, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels)
+void HelloTriangleApp::GenerateMipmaps(VkImage image, VkFormat format, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels)
 {
+    VkFormatProperties formatProp{};
+    vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProp);
+
+    //Not all formats support linear blitting
+    //TODO: implement software runtime mipmap generation for non suported types (stb_image_resize)
+    if(!(formatProp.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+    {
+        throw std::runtime_error("texture format does not support linear blitting!");
+    }
+    
     VkCommandBuffer cmdBuff = BeginSingleTimeCommandBuffer();
 
     VkImageMemoryBarrier barrier{};
@@ -1241,13 +1251,12 @@ void HelloTriangleApp::GenerateMipmaps(VkImage image, uint32_t texWidth, uint32_
         imageBlit.dstSubresource.baseArrayLayer = 0;
         imageBlit.dstSubresource.layerCount = 1;
 
-
         vkCmdBlitImage(cmdBuff, 
             image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
             image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1, &imageBlit, VK_FILTER_LINEAR);
 
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -1269,7 +1278,7 @@ void HelloTriangleApp::GenerateMipmaps(VkImage image, uint32_t texWidth, uint32_
     }
 
     barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
