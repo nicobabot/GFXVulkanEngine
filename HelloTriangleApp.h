@@ -107,6 +107,13 @@ private:
     //TODO: Make sampler not related with texture
     VkSampler textureSampler;
 
+
+    VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkImage colorImage;
+    VkDeviceMemory colorImageMemory;
+    VkImageView colorImageView;
+
     //TODO: store vertex + index in the same buffer for memory aliasing
     //https://developer.nvidia.com/vulkan-memory-management 
     VkBuffer stagingBuffer;
@@ -148,6 +155,7 @@ private:
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, 
     const VkAllocationCallbacks* pAllocator);
     void CreateSurface();
+    VkSampleCountFlagBits GetMaxUsableSampleCount();
     void PickPhysicalDevice();
     bool IsSuitableDevice(VkPhysicalDevice requestedPhysicalDevice);
     bool CheckDeviceExtensionSupport(VkPhysicalDevice requestedPhysicalDevice);
@@ -171,13 +179,14 @@ private:
     VkFormat FindSupportedFormat(std::vector<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
     VkFormat FindDepthFormat();
     bool HasStencilComponent(VkFormat format);
+    void CreateColorResources();
     void CreateDepthResources();
     VkCommandBuffer BeginSingleTimeCommandBuffer();
     void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
     void TransitionImageLayout(VkImage image, VkFormat format, 
         VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
-    void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, 
+    void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSample, VkFormat format, VkImageTiling tiling,
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     void CreateTextureImage();
     void GenerateMipmaps(VkImage image, VkFormat format, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels );
