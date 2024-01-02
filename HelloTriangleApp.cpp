@@ -201,7 +201,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
     void* pUserData) {
 
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    std::cerr << "validation layer: " << pCallbackData->pMessage << "\n" << std::endl;
 
     return VK_FALSE;
 }
@@ -622,13 +622,13 @@ void HelloTriangleApp::CreateRenderPass()
 {
     VkAttachmentDescription colorAttachmentDescr{};
     colorAttachmentDescr.format = swapChainImageFormat;
-    colorAttachmentDescr.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachmentDescr.samples = msaaSamples;
     colorAttachmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; 
     colorAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference colorAttachment{};
     colorAttachment.attachment = 0;
@@ -636,7 +636,7 @@ void HelloTriangleApp::CreateRenderPass()
 
     VkAttachmentDescription depthAttachmentDescr{};
     depthAttachmentDescr.format = FindDepthFormat();
-    depthAttachmentDescr.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachmentDescr.samples = msaaSamples;
     depthAttachmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -648,10 +648,25 @@ void HelloTriangleApp::CreateRenderPass()
     depthAttachment.attachment = 1;
     depthAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+    VkAttachmentDescription colorAttachmentResolve{};
+    colorAttachmentResolve.format = swapChainImageFormat;
+    colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorResolveReference{};
+    colorResolveReference.attachment = 2;
+    colorResolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
     VkSubpassDescription subpassDescr{};
     subpassDescr.colorAttachmentCount = 1;
     subpassDescr.pColorAttachments = &colorAttachment;
     subpassDescr.pDepthStencilAttachment = &depthAttachment;
+    subpassDescr.pResolveAttachments = &colorResolveReference;
 
     VkSubpassDependency subpassDependency{};
     subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -664,7 +679,8 @@ void HelloTriangleApp::CreateRenderPass()
     subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-    std::array<VkAttachmentDescription, 2> attachments = {colorAttachmentDescr, depthAttachmentDescr};
+    std::array<VkAttachmentDescription, 3> attachments = {colorAttachmentDescr, 
+        depthAttachmentDescr, colorAttachmentResolve };
     VkRenderPassCreateInfo renderPassCreateInfo{};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -797,11 +813,10 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
     rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.0f;
 
-    //TODO
     VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
     multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;
-    multisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampleStateCreateInfo.rasterizationSamples = msaaSamples;
     multisampleStateCreateInfo.minSampleShading = 1.0f; // Optional
     multisampleStateCreateInfo.pSampleMask = nullptr; // Optional
     multisampleStateCreateInfo.alphaToCoverageEnable = VK_FALSE; // Optional
@@ -898,10 +913,11 @@ void HelloTriangleApp::CreateFramebuffers()
     swapchainFramebuffers.resize(swapChainImageViews.size());
     for (int i = 0; i < swapChainImageViews.size(); ++i) 
     {
-        std::array<VkImageView,2> attachments
+        std::array<VkImageView,3> attachments
         {
+            colorImageView,
+            depthImageView,
             swapChainImageViews[i],
-            depthImageView
         };
 
         VkFramebufferCreateInfo framebufferCreateInfo{};
@@ -989,8 +1005,8 @@ void HelloTriangleApp::CreateDepthResources()
 {
     VkFormat depthFormat = FindDepthFormat();
 
-    CreateImage(swapChainExtent.width, swapChainExtent.height, msaaSamples,
-        VK_SAMPLE_COUNT_1_BIT, depthFormat, VK_IMAGE_TILING_OPTIMAL, 
+    CreateImage(swapChainExtent.width, swapChainExtent.height, 1,
+        msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, 
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         depthImage, depthImageMemory);
@@ -1612,9 +1628,10 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     renderPassBeginInfo.renderArea.offset = {0,0};
     renderPassBeginInfo.renderArea.extent = swapChainExtent;
 
-    std::array<VkClearValue, 2> clearValues{};
+    std::array<VkClearValue, 3> clearValues{};
     clearValues[0].color = {0.0f,0.0f,0.0f,1.0f};
     clearValues[1].depthStencil = {1.0f, 0};
+    clearValues[2].color = { 0.0f,0.0f,0.0f,1.0f };
     renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassBeginInfo.pClearValues = clearValues.data();
 
