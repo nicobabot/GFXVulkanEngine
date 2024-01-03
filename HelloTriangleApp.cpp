@@ -436,6 +436,12 @@ void HelloTriangleApp::CreateLogicalDevice()
     logicalDeviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
 
     VkPhysicalDeviceFeatures physicalDeviceFeatures{};
+
+    //The sample rate determines the number of subpixels that are actually sampled for that pixel. 
+    //Subpixels with higher priority are sampled more frequently, 
+    //while subpixels with lower priority are sampled less frequently.
+    physicalDeviceFeatures.sampleRateShading = VK_TRUE;
+
     logicalDeviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
     logicalDeviceCreateInfo.ppEnabledExtensionNames = deviceExtensionsRequired.data();
     logicalDeviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensionsRequired.size());
@@ -815,9 +821,9 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
     VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
     multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;
+    multisampleStateCreateInfo.sampleShadingEnable = VK_TRUE;
     multisampleStateCreateInfo.rasterizationSamples = msaaSamples;
-    multisampleStateCreateInfo.minSampleShading = 1.0f; // Optional
+    multisampleStateCreateInfo.minSampleShading = .2f; //min fraction for sample shading;closer to one is smoother
     multisampleStateCreateInfo.pSampleMask = nullptr; // Optional
     multisampleStateCreateInfo.alphaToCoverageEnable = VK_FALSE; // Optional
     multisampleStateCreateInfo.alphaToOneEnable = VK_FALSE; // Optional
