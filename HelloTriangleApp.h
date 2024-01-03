@@ -53,10 +53,12 @@ struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentationFamily;
+    std::optional<uint32_t> graphicsAndComputeFamily;
 
     bool IsComplete() 
     {
-        return graphicsFamily.has_value() && presentationFamily.has_value();
+        return graphicsFamily.has_value() && presentationFamily.has_value() 
+            && graphicsAndComputeFamily.has_value();
     }
 };
 
@@ -81,6 +83,7 @@ private:
     VkDevice logicalDevice;
     VkQueue graphicsQueue;
     VkQueue presentationQueue;
+    VkQueue computeQueue;
     VkSurfaceKHR surface;
     VkSwapchainKHR swapChain;
     VkFormat swapChainImageFormat;

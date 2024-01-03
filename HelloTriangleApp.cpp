@@ -1,4 +1,5 @@
 #include "HelloTriangleApp.h"
+#include "MainDefines.h"
 
 void HelloTriangleApp::Run()
 {
@@ -363,9 +364,15 @@ QueueFamilyIndices HelloTriangleApp::FindQueueFamilies(VkPhysicalDevice requeste
     int i = 0;
     for (VkQueueFamilyProperties queue : queueFamilyProperties) 
     {
-        if (queue.queueFlags & VK_QUEUE_GRAPHICS_BIT) 
+        if (queue.queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
             queueFamilyIndices.graphicsFamily = i;
+        }
+
+        if ((queue.queueFlags & VK_QUEUE_GRAPHICS_BIT) && 
+            (queue.queueFlags & VK_QUEUE_COMPUTE_BIT)) 
+        {
+            queueFamilyIndices.graphicsAndComputeFamily = i;
         }
 
         VkBool32 hasSurfaceSupport = false;
@@ -467,6 +474,7 @@ void HelloTriangleApp::GetLogicalDeviceQueues()
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
     vkGetDeviceQueue(logicalDevice, queueFamilyIndices.graphicsFamily.value(), 0, &graphicsQueue);
     vkGetDeviceQueue(logicalDevice, queueFamilyIndices.presentationFamily.value(), 0, &presentationQueue);
+    vkGetDeviceQueue(logicalDevice, queueFamilyIndices.graphicsAndComputeFamily.value(), 0, &computeQueue);
 }
 
 void HelloTriangleApp::CreateSwapChain()
@@ -755,6 +763,10 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     fragmentPipelineCreateInfo.module = fragmentShaderModule;
     fragmentPipelineCreateInfo.pName = "main";
     fragmentPipelineCreateInfo.pSpecializationInfo = nullptr;
+
+    #if COMPUTE_FEATURE
+
+    #endif //#if COMPUTE_FEATURE
 
     VkPipelineShaderStageCreateInfo shaderStages[] {vertexPipelineCreateInfo, fragmentPipelineCreateInfo};
 
