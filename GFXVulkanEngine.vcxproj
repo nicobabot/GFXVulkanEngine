@@ -159,6 +159,7 @@
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="HelloTriangleApp.h" />
     <ClInclude Include="InputHandler.h" />
+    <ClInclude Include="MainDefines.h" />
     <ClInclude Include="ModelLoader.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>

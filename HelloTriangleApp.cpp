@@ -764,12 +764,8 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     fragmentPipelineCreateInfo.pName = "main";
     fragmentPipelineCreateInfo.pSpecializationInfo = nullptr;
 
-    #if COMPUTE_FEATURE
-
-    #endif //#if COMPUTE_FEATURE
-
-    VkPipelineShaderStageCreateInfo shaderStages[] {vertexPipelineCreateInfo, fragmentPipelineCreateInfo};
-
+    std::array<VkPipelineShaderStageCreateInfo, 2>  shaderStages {vertexPipelineCreateInfo,
+        fragmentPipelineCreateInfo};
     
     VkVertexInputBindingDescription vertexBindingDescription = Vertex::GetBindingDesctiption();
     std::array<VkVertexInputAttributeDescription, 4>
@@ -892,11 +888,10 @@ void HelloTriangleApp::CreateGraphicsPipeline()
         throw std::runtime_error("Error creating pipeline layuout!");
     }
 
-
     VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
     graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    graphicsPipelineCreateInfo.stageCount = 2;
-    graphicsPipelineCreateInfo.pStages = shaderStages;
+    graphicsPipelineCreateInfo.stageCount = shaderStages.size();
+    graphicsPipelineCreateInfo.pStages = shaderStages.data();
 
     graphicsPipelineCreateInfo.pVertexInputState = &vertexStateCreateInfo;
     graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssemblyCreateInfo;
@@ -921,6 +916,17 @@ void HelloTriangleApp::CreateGraphicsPipeline()
         throw std::runtime_error("Error creating graphic pipeline!");
     }
 
+    std::vector<char> computeShader = ReadFile("CompiledShaders/compute.spv");
+    VkShaderModule computeShaderModule = CreateShaderModule(computeShader);
+
+    VkPipelineShaderStageCreateInfo computePipelineCreateInfo{};
+    computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    computePipelineCreateInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    computePipelineCreateInfo.module = computeShaderModule;
+    computePipelineCreateInfo.pName = "main";
+
+    VkComputePipelineCreateInfo computePipelineCreateInfo{};
+    computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 
     vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
     vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
