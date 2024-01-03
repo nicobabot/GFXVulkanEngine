@@ -6,4 +6,4 @@ Interesting vulkan concepts:
 -Pipeline cache
 -Multi-threaded command buffer generation
 -Multiple subpasses
--Compute shaders
+-Compute shaders / Async compute shaders
