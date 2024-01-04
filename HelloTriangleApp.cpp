@@ -742,7 +742,7 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     }
 
     //Compute
-
+#if COMPUTE_FEATURE
     std::array<VkDescriptorSetLayoutBinding, 3> layoutBindings{};
     layoutBindings[0].binding = 0;
     layoutBindings[0].descriptorCount = 1;
@@ -772,6 +772,7 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     {
         throw std::runtime_error("Error creating compute descriptr set layout!");
     }
+#endif //#if COMPUTE_FEATURE
 }
 
 void HelloTriangleApp::CreateGraphicsPipeline()
@@ -950,6 +951,11 @@ void HelloTriangleApp::CreateGraphicsPipeline()
         throw std::runtime_error("Error creating graphic pipeline!");
     }
 
+    vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
+    vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
+
+#if COMPUTE_FEATURE
+
     std::vector<char> computeShader = ReadFile("CompiledShaders/compute.spv");
     VkShaderModule computeShaderModule = CreateShaderModule(computeShader);
 
@@ -959,8 +965,30 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     computePipelineCreateInfo.module = computeShaderModule;
     computePipelineCreateInfo.pName = "main";
 
-    vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
-    vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
+    VkPipelineLayoutCreateInfo computePipelineLayoutInfo{};
+    computePipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    computePipelineLayoutInfo.setLayoutCount = 1;
+    computePipelineLayoutInfo.pSetLayouts = &computeDescriptorSetLayout;
+
+    if (vkCreatePipelineLayout(logicalDevice,
+        &computePipelineLayoutInfo, nullptr, &computePipelineLayout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating compute pipeline layout!");
+    }
+
+    VkComputePipelineCreateInfo computePipelineInfo{};
+    computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    computePipelineInfo.layout = computePipelineLayout;
+    computePipelineInfo.stage = computePipelineCreateInfo;
+
+    if(vkCreateComputePipelines(logicalDevice, VK_NULL_HANDLE, 1, 
+        &computePipelineInfo, nullptr, &computePipeline) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating compute pipeline!");
+    }
+
+    vkDestroyShaderModule(logicalDevice, computeShaderModule, nullptr);
+#endif//#if COMPUTE_FEATURE
 }
 
 void HelloTriangleApp::CreateFramebuffers()
@@ -1591,6 +1619,29 @@ void HelloTriangleApp::CreateDescriptorPool()
     {
         throw std::runtime_error("Error creating descriptor pool!");
     }
+
+    //Compute
+#if COMPUTE_FEATURE
+    std::array<VkDescriptorPoolSize, 3> computeDescriptorPoolSize;
+    computeDescriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    computeDescriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    computeDescriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    computeDescriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    computeDescriptorPoolSize[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    computeDescriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    VkDescriptorPoolCreateInfo computeDescriptorPoolCreateInfo{};
+    computeDescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    computeDescriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(computeDescriptorPoolSize.size());
+    computeDescriptorPoolCreateInfo.pPoolSizes = computeDescriptorPoolSize.data();
+    computeDescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    if (vkCreateDescriptorPool(logicalDevice, &computeDescriptorPoolCreateInfo,
+        nullptr, &computeDescriptorPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating compute descriptor pool!");
+    }
+#endif//#if COMPUTE_FEATURE
 }
 
 void HelloTriangleApp::CreateDescriptorSets()
@@ -1608,6 +1659,22 @@ void HelloTriangleApp::CreateDescriptorSets()
     {
         throw std::runtime_error("Error allocating descriptor sets!");
     }
+
+#if COMPUTE_FEATURE
+    std::vector<VkDescriptorSetLayout> conmputeLayouts(MAX_FRAMES_IN_FLIGHT, computeDescriptorSetLayout);
+    VkDescriptorSetAllocateInfo computeDescriptorSetAllocateInfo{};
+    computeDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    computeDescriptorSetAllocateInfo.descriptorPool = computeDescriptorPool;
+    computeDescriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    computeDescriptorSetAllocateInfo.pSetLayouts = conmputeLayouts.data();
+
+    computeDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(logicalDevice, &computeDescriptorSetAllocateInfo,
+        computeDescriptorSets.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error allocating compute descriptor sets!");
+    }
+#endif//#if COMPUTE_FEATURE
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
@@ -1640,8 +1707,50 @@ void HelloTriangleApp::CreateDescriptorSets()
 
         vkUpdateDescriptorSets(logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
             writeDescriptorSet.data(), 0, nullptr);
-    }
 
+#if COMPUTE_FEATURE
+
+        VkDescriptorBufferInfo storageBufferInfoLastFrame{};
+        storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(1-i) % MAX_FRAMES_IN_FLIGHT];
+        storageBufferInfoLastFrame.offset = 0;
+        storageBufferInfoLastFrame.range = sizeof(Particle) * PARTICLE_COUNT;
+
+        VkDescriptorBufferInfo storageBufferInfoCurrentFrame{};
+        storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i];
+        storageBufferInfoCurrentFrame.offset = 0;
+        storageBufferInfoCurrentFrame.range = sizeof(Particle) * PARTICLE_COUNT;
+        
+        std::array<VkWriteDescriptorSet, 3> computeWriteDescriptorSet{};
+        computeWriteDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        computeWriteDescriptorSet[0].dstSet = computeDescriptorSets[i];
+        computeWriteDescriptorSet[0].dstBinding = 0;
+        computeWriteDescriptorSet[0].dstArrayElement = 0;
+        computeWriteDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        computeWriteDescriptorSet[0].descriptorCount = 1;
+        computeWriteDescriptorSet[0].pBufferInfo = &bufferInfo;
+
+        computeWriteDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        computeWriteDescriptorSet[1].dstSet = computeDescriptorSets[i];
+        computeWriteDescriptorSet[1].dstBinding = 1;
+        computeWriteDescriptorSet[1].dstArrayElement = 0;
+        computeWriteDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        computeWriteDescriptorSet[1].descriptorCount = 1;
+        computeWriteDescriptorSet[1].pBufferInfo = &storageBufferInfoLastFrame;
+
+        computeWriteDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        computeWriteDescriptorSet[2].dstSet = computeDescriptorSets[i];
+        computeWriteDescriptorSet[2].dstBinding = 2;
+        computeWriteDescriptorSet[2].dstArrayElement = 0;
+        computeWriteDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        computeWriteDescriptorSet[2].descriptorCount = 1;
+        computeWriteDescriptorSet[2].pBufferInfo = &storageBufferInfoCurrentFrame;
+
+        vkUpdateDescriptorSets(logicalDevice, 
+            computeWriteDescriptorSet.size(), computeWriteDescriptorSet.data(),
+            0, nullptr);
+
+#endif//#if COMPUTE_FEATURE
+    }
 }
 
 void HelloTriangleApp::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
