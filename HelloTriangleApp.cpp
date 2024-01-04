@@ -925,9 +925,6 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     computePipelineCreateInfo.module = computeShaderModule;
     computePipelineCreateInfo.pName = "main";
 
-    VkComputePipelineCreateInfo computePipelineCreateInfo{};
-    computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-
     vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
     vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
 }
