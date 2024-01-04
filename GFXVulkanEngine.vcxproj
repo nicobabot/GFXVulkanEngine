@@ -161,9 +161,11 @@
     <ClInclude Include="InputHandler.h" />
     <ClInclude Include="MainDefines.h" />
     <ClInclude Include="ModelLoader.h" />
+    <ClInclude Include="ParticleManager.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shaders\compute.glsl" />
     <None Include="Shaders\shader.frag" />
     <None Include="Shaders\shader.vert" />
   </ItemGroup>

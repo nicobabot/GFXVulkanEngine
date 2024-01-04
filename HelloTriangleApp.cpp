@@ -1,5 +1,6 @@
 #include "HelloTriangleApp.h"
 #include "MainDefines.h"
+#include "ParticleManager.h"
 
 void HelloTriangleApp::Run()
 {
@@ -53,6 +54,7 @@ void HelloTriangleApp::InitVulkan()
     CreateVertexBuffers();
     CreateIndexBuffers();
     CreateUniformBuffers();
+    CreateShaderStorageBuffers();
     CreateDescriptorPool();
     CreateDescriptorSets();
     CreateCommandBuffers();
@@ -737,6 +739,38 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
         nullptr, &descriptorSetLayout) != VK_SUCCESS) 
     {
         throw std::runtime_error("Error creating descriptor set layout!");
+    }
+
+    //Compute
+
+    std::array<VkDescriptorSetLayoutBinding, 3> layoutBindings{};
+    layoutBindings[0].binding = 0;
+    layoutBindings[0].descriptorCount = 1;
+    layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    layoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    layoutBindings[0].pImmutableSamplers = nullptr;
+
+    layoutBindings[1].binding = 1;
+    layoutBindings[1].descriptorCount = 1;
+    layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    layoutBindings[1].pImmutableSamplers = nullptr;
+
+    layoutBindings[2].binding = 2;
+    layoutBindings[2].descriptorCount = 1;
+    layoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    layoutBindings[2].pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo computeLayoutInfo{};
+    computeLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    computeLayoutInfo.bindingCount = layoutBindings.size();
+    computeLayoutInfo.pBindings = layoutBindings.data();
+
+    if (vkCreateDescriptorSetLayout(logicalDevice, &computeLayoutInfo,
+        nullptr, &computeDescriptorSetLayout) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("Error creating compute descriptr set layout!");
     }
 }
 
@@ -1503,6 +1537,39 @@ void HelloTriangleApp::CreateUniformBuffers()
         vkMapMemory(logicalDevice, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
     }
 
+}
+
+void HelloTriangleApp::CreateShaderStorageBuffers()
+{
+    shaderStorageBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    shaderStorageBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+
+    std::vector <Particle> particles = InitializeParicles();
+
+    VkDeviceSize bufferSize = sizeof(Particle) * particles.size();
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, particles.data(), bufferSize);
+    vkUnmapMemory(logicalDevice, stagingBufferMemory);
+
+    for(int i=0; i<MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        CreateBuffer(bufferSize, 
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, shaderStorageBuffers[i], shaderStorageBuffersMemory[i]);
+
+        CopyBuffer(stagingBuffer, shaderStorageBuffers[i], bufferSize);
+    }
+
+    vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(logicalDevice, stagingBufferMemory, nullptr);
 }
 
 void HelloTriangleApp::CreateDescriptorPool()
