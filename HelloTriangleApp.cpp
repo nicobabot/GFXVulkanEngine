@@ -1033,6 +1033,12 @@ void HelloTriangleApp::CreateCommandPool()
         throw std::runtime_error("Error creating command pool!");
     }
 
+    commandoPoolCreateInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
+
+    if (vkCreateCommandPool(logicalDevice, &commandoPoolCreateInfo, nullptr, &computeCommandPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating compute command pool!");
+    }
 }
 
 VkFormat HelloTriangleApp::FindSupportedFormat(std::vector<VkFormat> candidates, 
@@ -1769,6 +1775,7 @@ void HelloTriangleApp::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDevi
 void HelloTriangleApp::CreateCommandBuffers()
 {   
     commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    computeCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
     commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1777,6 +1784,16 @@ void HelloTriangleApp::CreateCommandBuffers()
     commandBufferAllocateInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
     if(vkAllocateCommandBuffers(logicalDevice, &commandBufferAllocateInfo, commandBuffers.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating command buffer!");
+    }
+
+    commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandBufferAllocateInfo.commandPool = computeCommandPool;
+    commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandBufferAllocateInfo.commandBufferCount = (uint32_t)computeCommandBuffers.size();
+
+    if (vkAllocateCommandBuffers(logicalDevice, &commandBufferAllocateInfo, computeCommandBuffers.data()) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating command buffer!");
     }
@@ -1805,9 +1822,34 @@ void HelloTriangleApp::CreateSyncObjects()
     }
 }
 
+void HelloTriangleApp::RecordComputeCommandBuffer(VkCommandBuffer commandBuffer)
+{
+#if COMPUTE_FEATURE
+    VkCommandBufferBeginInfo commandBufferBeginInfo{};
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = 0;
+    commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+    if (vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating command buffer!");
+    }
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+        computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
+
+    vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error recording command buffer!");
+    }
+#endif//#if COMPUTE_FEATURE
+}
+
 void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-
     VkCommandBufferBeginInfo commandBufferBeginInfo{};
     commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     commandBufferBeginInfo.flags = 0;
@@ -1817,15 +1859,6 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     {
         throw std::runtime_error("Error creating command buffer!");
     }
-
-#if COMPUTE_FEATURE
-    //TODO: create command buffers only for compute?
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-        computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
-
-    vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
-#endif//#if COMPUTE_FEATURE
 
     VkRenderPassBeginInfo renderPassBeginInfo{};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1966,13 +1999,33 @@ void HelloTriangleApp::DrawFrame()
     vkResetFences(logicalDevice, 1, &inFlightFences[currentFrame]);
 
     UpdateUniformBuffers(currentFrame);
-    
+
+    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+#if COMPUTE_FEATURE
+    //Need to add more sync for compute?
+    VkSubmitInfo computeSubmitInfo{};
+    computeSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    computeSubmitInfo.waitSemaphoreCount = 0;
+    //computeSubmitInfo.pWaitSemaphores = waitSemaphores;
+    computeSubmitInfo.pWaitDstStageMask = waitStages;
+    computeSubmitInfo.commandBufferCount = 1;
+    computeSubmitInfo.pCommandBuffers = &computeCommandBuffers[currentFrame];
+    computeSubmitInfo.signalSemaphoreCount = 0;
+
+    RecordComputeCommandBuffer(computeCommandBuffers[currentFrame]);
+
+    if (vkQueueSubmit(computeQueue, 1, &computeSubmitInfo, nullptr) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("Error submitting compute command buffer");
+    }
+#endif//#if COMPUTE_FEATURE
+
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
 
     RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
-    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame]};
-    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame]};
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1986,7 +2039,7 @@ void HelloTriangleApp::DrawFrame()
 
     if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
     {
-        throw std::runtime_error("Error submiting draw command buffer!");
+        throw std::runtime_error("Error submitting draw command buffer!");
     }
 
     VkPresentInfoKHR presentInfo{};
@@ -2066,6 +2119,15 @@ void HelloTriangleApp::CleanupBuffers()
     vkDestroyBuffer(logicalDevice, indexBuffer, nullptr);
     vkFreeMemory(logicalDevice, indexBufferMemory, nullptr);
 
+    for (int i = 0; i < shaderStorageBuffers.size(); i++)
+    {
+        vkDestroyBuffer(logicalDevice, shaderStorageBuffers[i], nullptr);
+    }
+    for (int i = 0; i < shaderStorageBuffersMemory.size(); i++)
+    {
+        vkFreeMemory(logicalDevice, shaderStorageBuffersMemory[i], nullptr);
+    }
+
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) 
     {
         vkDestroyBuffer(logicalDevice, uniformBuffers[i], nullptr);
@@ -2096,6 +2158,13 @@ void HelloTriangleApp::Cleanup()
     vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
     vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
+
+    vkDestroyCommandPool(logicalDevice, computeCommandPool, nullptr);
+    vkDestroyDescriptorPool(logicalDevice, computeDescriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(logicalDevice, computeDescriptorSetLayout, nullptr);
+    vkDestroyPipeline(logicalDevice, computePipeline, nullptr);
+    vkDestroyPipelineLayout(logicalDevice, computePipelineLayout, nullptr);
+
     vkDestroyDevice(logicalDevice, nullptr);
     if (enableValidationLayers) 
     {

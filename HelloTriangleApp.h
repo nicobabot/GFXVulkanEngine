@@ -98,7 +98,9 @@ private:
     VkPipeline graphicsPipeline;
     VkPipeline computePipeline;
     std::vector<VkFramebuffer> swapchainFramebuffers;
+
     VkCommandPool commandPool;
+    VkCommandPool computeCommandPool;
 
     //Depth
     VkImage depthImage;
@@ -148,6 +150,8 @@ private:
     std::vector<VkDescriptorSet> computeDescriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
+    std::vector<VkCommandBuffer> computeCommandBuffers;
+
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
@@ -221,6 +225,7 @@ private:
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void CreateCommandBuffers();
     void CreateSyncObjects();
+    void RecordComputeCommandBuffer(VkCommandBuffer commandBuffer);
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryFlags);
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
