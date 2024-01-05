@@ -1,6 +1,11 @@
 #version 450
 
-layout (binding = 0) uniform ParameterUBO {
+layout (binding = 0) uniform UniformBufferObject {
+    mat4 modelM;
+    mat4 viewM;
+    mat4 projM;
+    vec3 viewPos;
+    int debugUtil;
     float deltaTime;
 } ubo;
 

@@ -181,4 +181,5 @@ struct UniformBufferObject
 	alignas(16) glm::mat4 projM;
 	glm::vec3 viewPos;
 	alignas(4) int debugUtil;
+	float deltaTime;
 };

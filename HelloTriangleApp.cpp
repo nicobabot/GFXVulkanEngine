@@ -1931,8 +1931,6 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     float time = std::chrono::duration<float, 
         std::chrono::seconds::period>(startTime - currentTime).count();
 
-    time = 1;
-
     UniformBufferObject ubo{};
     ubo.modelM = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(0,0,1));
     glm::vec3 eyePos = inputHandler.GetPosition();
@@ -1942,6 +1940,7 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
         swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 500.0f);
     ubo.projM[1][1] *= -1;
     ubo.debugUtil = inputHandler.IsDebugEnabled() ? 1:0;
+    ubo.deltaTime = time;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
