@@ -1818,6 +1818,15 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
         throw std::runtime_error("Error creating command buffer!");
     }
 
+#if COMPUTE_FEATURE
+    //TODO: create command buffers only for compute?
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+        computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
+
+    vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
+#endif//#if COMPUTE_FEATURE
+
     VkRenderPassBeginInfo renderPassBeginInfo{};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassBeginInfo.renderPass = renderPass;
@@ -1960,6 +1969,7 @@ void HelloTriangleApp::DrawFrame()
     UpdateUniformBuffers(currentFrame);
     
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
+
     RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
     VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame]};
