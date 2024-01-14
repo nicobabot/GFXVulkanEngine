@@ -15,6 +15,8 @@ void ModelLoader::LoadModel()
 	if (basicGeometry) 
 	{
 		//Assign vertex/index values to basic geometry
+		vertices = basicGeometryVertices;
+		indices = basicGeometryIndices;
 		return;
 	}
 

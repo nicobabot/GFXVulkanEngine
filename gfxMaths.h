@@ -95,7 +95,7 @@ const std::vector<uint16_t> indices =
 	{0, 1, 2, 2, 3, 0}
 };*/
 
-const std::vector<Vertex> vertices =
+const std::vector<Vertex> basicGeometryVertices =
 {
 	//Front
 	{{0.5, -0.5, -0.5},  RED, {1.0f, 1.0f} ,{0.0f, -1.0f, 0.0f}},
@@ -140,7 +140,7 @@ const std::vector<Vertex> vertices =
 
 };
 
-const std::vector<uint16_t> indices =
+const std::vector<uint32_t> basicGeometryIndices =
 {
 	//Front
 	0,1,2,2,3,0,

@@ -1328,8 +1328,6 @@ void HelloTriangleApp::CreateTextureImage()
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
     CopyBufferToImage(stagingBuffer, textureImage, 
         static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    /*TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels);*/
     GenerateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
 
     vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);

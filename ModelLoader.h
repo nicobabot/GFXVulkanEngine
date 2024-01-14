@@ -16,7 +16,7 @@ public:
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 private:
-	bool basicGeometry = false;
+	bool basicGeometry = true;
 
 };
 
