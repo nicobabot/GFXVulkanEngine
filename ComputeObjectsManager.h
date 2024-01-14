@@ -3,26 +3,26 @@
 #include <vector>
 #include <random>
 
-#define PARTICLE_COUNT 500
+#define OBJECT_COUNT 500
 #define HEIGHT 10
 #define WIDTH 10
 
-struct Particle 
+struct TestComputeClass 
 {
 	glm::vec2 position;
 	glm::vec2 velocity;
 	glm::vec4 color;
 };
 
-std::vector <Particle> InitializeParicles()
+std::vector <TestComputeClass> InitializeRandomClass()
 {
     // Initialize particles
     std::default_random_engine rndEngine((unsigned)time(nullptr));
     std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 
     // Initial particle positions on a circle
-    std::vector<Particle> particles(PARTICLE_COUNT);
-    for (auto& particle : particles) {
+    std::vector<TestComputeClass> objects(OBJECT_COUNT);
+    for (auto& particle : objects) {
         float r = 0.25f * sqrt(rndDist(rndEngine));
         float theta = rndDist(rndEngine) * 2 * 3.14159265358979323846;
         float x = r * cos(theta) * HEIGHT / WIDTH;
@@ -32,5 +32,5 @@ std::vector <Particle> InitializeParicles()
         particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine), 1.0f);
     }
 
-    return particles;
+    return objects;
 }

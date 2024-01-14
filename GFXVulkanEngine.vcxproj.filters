@@ -53,7 +53,7 @@
     <ClInclude Include="MainDefines.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ParticleManager.h">
+    <ClInclude Include="ComputeObjectsManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

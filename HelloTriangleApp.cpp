@@ -1,6 +1,6 @@
 #include "HelloTriangleApp.h"
 #include "MainDefines.h"
-#include "ParticleManager.h"
+#include "ComputeObjectsManager.h"
 
 void HelloTriangleApp::Run()
 {
@@ -1578,9 +1578,9 @@ void HelloTriangleApp::CreateShaderStorageBuffers()
     shaderStorageBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     shaderStorageBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
 
-    std::vector <Particle> particles = InitializeParicles();
+    std::vector <TestComputeClass> objects = InitializeRandomClass();
 
-    VkDeviceSize bufferSize = sizeof(Particle) * particles.size();
+    VkDeviceSize bufferSize = sizeof(TestComputeClass) * objects.size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1590,7 +1590,7 @@ void HelloTriangleApp::CreateShaderStorageBuffers()
 
     void* data;
     vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, particles.data(), bufferSize);
+    memcpy(data, objects.data(), bufferSize);
     vkUnmapMemory(logicalDevice, stagingBufferMemory);
 
     for(int i=0; i<MAX_FRAMES_IN_FLIGHT; ++i)
@@ -1719,12 +1719,12 @@ void HelloTriangleApp::CreateDescriptorSets()
         VkDescriptorBufferInfo storageBufferInfoLastFrame{};
         storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(1-i) % MAX_FRAMES_IN_FLIGHT];
         storageBufferInfoLastFrame.offset = 0;
-        storageBufferInfoLastFrame.range = sizeof(Particle) * PARTICLE_COUNT;
+        storageBufferInfoLastFrame.range = sizeof(TestComputeClass) * OBJECT_COUNT;
 
         VkDescriptorBufferInfo storageBufferInfoCurrentFrame{};
         storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i];
         storageBufferInfoCurrentFrame.offset = 0;
-        storageBufferInfoCurrentFrame.range = sizeof(Particle) * PARTICLE_COUNT;
+        storageBufferInfoCurrentFrame.range = sizeof(TestComputeClass) * OBJECT_COUNT;
         
         std::array<VkWriteDescriptorSet, 3> computeWriteDescriptorSet{};
         computeWriteDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1839,7 +1839,7 @@ void HelloTriangleApp::RecordComputeCommandBuffer(VkCommandBuffer commandBuffer)
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
         computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
 
-    vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
+    vkCmdDispatch(commandBuffer, OBJECT_COUNT / 256, 1, 1);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
     {

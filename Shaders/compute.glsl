@@ -9,18 +9,18 @@ layout (binding = 0) uniform UniformBufferObject {
     float deltaTime;
 } ubo;
 
-struct Particle {
+struct TestComputeClass {
     vec2 position;
     vec2 velocity;
     vec4 color;
 };
 
-layout(std140, binding = 1) readonly buffer ParticleSSBOIn {
-   Particle particlesIn[ ];
+layout(std140, binding = 1) readonly buffer ObjectsSSBOIn {
+   TestComputeClass objectsIn[ ];
 };
 
-layout(std140, binding = 2) buffer ParticleSSBOOut {
-   Particle particlesOut[ ];
+layout(std140, binding = 2) buffer ObjectsSSBOOut {
+   TestComputeClass objectsOut[ ];
 };
 
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
@@ -29,8 +29,8 @@ void main()
 {
     uint index = gl_GlobalInvocationID.x;  
 
-    Particle particleIn = particlesIn[index];
+    TestComputeClass objectIn = objectsIn[index];
 
-    particlesOut[index].position = particleIn.position + particleIn.velocity.xy * ubo.deltaTime;
-    particlesOut[index].velocity = particleIn.velocity;
+    objectsOut[index].position = objectIn.position + objectIn.velocity.xy * ubo.deltaTime;
+    objectsOut[index].velocity = objectIn.velocity;
 }
