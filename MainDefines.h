@@ -1,1 +1,1 @@
-#define COMPUTE_FEATURE 1
+#define COMPUTE_FEATURE 0

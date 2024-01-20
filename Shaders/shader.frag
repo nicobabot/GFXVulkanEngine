@@ -26,13 +26,13 @@ vec4 DirectionalLight(vec4 fragmentColor)
     return finalColor;
 }
 
-vec4 SpotLight()
+vec4 SpotLight(vec4 fragmentColor)
 {
-    vec3 lightPos = vec3(-2,0,4);
+    vec3 lightPos = vec3(-3,1,2);
     vec3 lightDir = normalize(lightPos - fragPos );
     float distance = length(lightPos - fragPos );
 
-    float ambientColor = 0.0085;
+    float ambientColor = 0.085;
     float diffuseColor = max(dot(normal,lightDir), 0);
     float constant = 1.0f;
     float linear = 0.35f;
@@ -44,7 +44,7 @@ vec4 SpotLight()
     ambientColor *= attenuation;
     diffuseColor *= attenuation;
 
-    vec4 finalColor = vec4((ambientColor + diffuseColor) * fragColor ,1);
+    vec4 finalColor = vec4((ambientColor + diffuseColor) * fragmentColor.rgb ,1);
     return finalColor;
 
 }
@@ -61,8 +61,8 @@ void main()
         finalColor = texture(texSampler, fragTexCoord);
     }
 
-    //finalColor = SpotLight();
+    //outColor = SpotLight(finalColor);
 
-    //outColor = DirectionalLight(finalColor);
-    outColor = texture(texSampler, fragTexCoord) * vec4(fragColor,1.0f);
+    outColor = DirectionalLight(finalColor);
+    //outColor = texture(texSampler, fragTexCoord) * vec4(fragColor,1.0f);
 }
