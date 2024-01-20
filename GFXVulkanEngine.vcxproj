@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="GfxPipelineManager.cpp" />
     <ClCompile Include="HelloTriangleApp.cpp" />
     <ClCompile Include="InputHandler.cpp" />
     <ClCompile Include="main.cpp" />
@@ -157,6 +158,7 @@
   <ItemGroup>
     <ClInclude Include="ColorsDef.h" />
     <ClInclude Include="gfxMaths.h" />
+    <ClInclude Include="GfxPipelineManager.h" />
     <ClInclude Include="HelloTriangleApp.h" />
     <ClInclude Include="InputHandler.h" />
     <ClInclude Include="MainDefines.h" />
@@ -165,6 +167,7 @@
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shaders\brdfShader.frag" />
     <None Include="Shaders\compute.glsl" />
     <None Include="Shaders\shader.frag" />
     <None Include="Shaders\shader.vert" />

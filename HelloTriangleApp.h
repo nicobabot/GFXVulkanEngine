@@ -14,6 +14,7 @@
 //#include "gfxMaths.h"
 
 #include "ModelLoader.h"
+#include "GfxPipelineManager.h";
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
@@ -93,7 +94,7 @@ private:
     VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSetLayout computeDescriptorSetLayout;
-    VkPipelineLayout pipelineLayout;
+    VkPipelineLayout graphicsPipelineLayout;
     VkPipelineLayout computePipelineLayout;
     VkPipeline graphicsPipeline;
     VkPipeline computePipeline;
@@ -160,6 +161,7 @@ private:
 
     InputHandler inputHandler;
     ModelLoader modelLoader;
+    GfxPipelineManager pipelineManager;
 
 //Methods
 public:
