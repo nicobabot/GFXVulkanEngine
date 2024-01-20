@@ -813,8 +813,33 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
     pipelineManager.CreateGraphicsPipeline(graphicPipelineInfo, graphicsPipelineLayout, graphicsPipeline);
 
+    std::vector<char> brdfFragmentShader = ReadFile("CompiledShaders/brdfFrag.spv");
+
+    VkShaderModule brdfFragmentShaderModule = CreateShaderModule(brdfFragmentShader);
+
+    VkPipelineShaderStageCreateInfo brdfFragmentPipelineCreateInfo{};
+    brdfFragmentPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    brdfFragmentPipelineCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    brdfFragmentPipelineCreateInfo.module = brdfFragmentShaderModule;
+    brdfFragmentPipelineCreateInfo.pName = "main";
+    brdfFragmentPipelineCreateInfo.pSpecializationInfo = nullptr;
+
+    std::vector<VkPipelineShaderStageCreateInfo>  brdfShaderStages {vertexPipelineCreateInfo,
+        brdfFragmentPipelineCreateInfo};
+
+    GraphicsPipelineInfo brdfGraphicPipelineInfo{};
+    brdfGraphicPipelineInfo.descriptorSetLayout = descriptorSetLayout;
+    brdfGraphicPipelineInfo.shaderStages = brdfShaderStages;
+    brdfGraphicPipelineInfo.renderPass = renderPass;
+    brdfGraphicPipelineInfo.msaaSamples = msaaSamples;
+    brdfGraphicPipelineInfo.viewportExtent = swapChainExtent;
+
+    pipelineManager.CreateGraphicsPipeline(brdfGraphicPipelineInfo,
+        brdfPipelineLayout, brdfPipeline);
+
     vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
     vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
+    vkDestroyShaderModule(logicalDevice, brdfFragmentShaderModule, nullptr);
 
 #if COMPUTE_FEATURE
 
@@ -2016,7 +2041,9 @@ void HelloTriangleApp::Cleanup()
     vkDestroyDescriptorPool(logicalDevice, descriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(logicalDevice, descriptorSetLayout, nullptr);
     vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
+    vkDestroyPipeline(logicalDevice, brdfPipeline, nullptr);
     vkDestroyPipelineLayout(logicalDevice, graphicsPipelineLayout, nullptr);
+    vkDestroyPipelineLayout(logicalDevice, brdfPipelineLayout, nullptr);
     vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
 
     vkDestroyCommandPool(logicalDevice, computeCommandPool, nullptr);

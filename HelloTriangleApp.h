@@ -91,12 +91,19 @@ private:
     VkExtent2D swapChainExtent;
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
+
     VkRenderPass renderPass;
+
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSetLayout computeDescriptorSetLayout;
+
     VkPipelineLayout graphicsPipelineLayout;
-    VkPipelineLayout computePipelineLayout;
     VkPipeline graphicsPipeline;
+
+    VkPipelineLayout brdfPipelineLayout;
+    VkPipeline brdfPipeline;
+
+    VkPipelineLayout computePipelineLayout;
     VkPipeline computePipeline;
     std::vector<VkFramebuffer> swapchainFramebuffers;
 
