@@ -10,9 +10,14 @@ layout(location = 5) flat in int debugUtilF;
 layout(location = 0) out vec4 outColor;
 layout(binding = 1) uniform sampler2D texSampler;
 
+//Remember
+// X : left (1,0,0) | -X : right (-1,0,0)
+// Y : forward, closer camera (0,1,0) | -Y : negative forward, far camera (0,-1,0)
+// Z : down (0,0,1) | -Z : up (0,0,-1)
+
 vec4 DirectionalLight(vec4 fragmentColor)
 {
-    vec3 lightPos = vec3(1,0,1);
+    vec3 lightPos = vec3(-5,0,0);
     vec3 lightDir = normalize(lightPos - fragPos );
     float ambientColor = 0.085;
     float diffuseColor = max(dot(normal,lightDir), 0);

@@ -38,6 +38,11 @@ float Fd_Lambert()
     return 1.0 / PI;
 }
 
+//Remember
+// X : left (1,0,0) | -X : right (-1,0,0)
+// Y : forward, closer camera (0,1,0) | -Y : negative forward, far camera (0,-1,0)
+// Z : down (0,0,1) | -Z : up (0,0,-1)
+
 void main() 
 {
     //Specular BRDF
@@ -46,7 +51,7 @@ void main()
     //G - Geomatry shadowing/maksing
     //F - Fresnel, highlight when gazing angles
 
-    vec3 lightPos = vec3(-5,0,0);
+    vec3 lightPos = vec3(0,0,-5);
     vec3 l = normalize( lightPos - fragPos );
     vec3 v = normalize( viewPosF - fragPos );
     vec3 h = normalize(v + l);
@@ -70,4 +75,5 @@ void main()
     vec3 dBRDF = diffuseColor * Fd_Lambert();
 
     outColor = color + vec4(dBRDF,1.0f) + vec4(sBRDF,1.0f);
+    //outColor = color * vec4(fragColor,1.0f);;
 }
