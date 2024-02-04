@@ -1,6 +1,7 @@
 #include "InputHandler.h"
 #include <iostream>
 #include <windows.h>
+#include "utils.h"
 //#include <string.h>
 
 void InputHandler::Init()
@@ -61,7 +62,11 @@ void InputHandler::ReactToEvents(GLFWwindow &window)
 
 void InputHandler::CompileShaders()
 {
-	system("GfxVulkanEngineCompileShaders.bat");
+	std::string file = "GfxVulkanEngineCompileShaders_DXC.bat";
+	if (FileExists(file))
+	{
+		system("GfxVulkanEngineCompileShaders_DXC.bat");
+	}
 }
 
 glm::vec3 InputHandler::GetPosition()

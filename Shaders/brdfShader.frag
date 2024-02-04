@@ -22,6 +22,11 @@ float D_GGX(float NoH, float roughness)
 
 float V_GGXCorrelated(float NoV, float NoL, float roughness)
 {
+    if(NoV == 0 || NoL == 0)
+    {
+        return 0;
+    }
+
     float a2 = roughness * roughness;
     float GGXV = NoV * sqrt(NoV * NoV * (1 - a2) + a2);
     float GGXL = NoL * sqrt(NoL * NoL * (1 - a2) + a2);
@@ -33,9 +38,22 @@ vec3 F_Schlick(float u, float f0, float f90)
     return f0 + (vec3(f90)- f0) * pow(1.0 - u, 5.0);
 }
 
+float F_Schlick_U(float u, float f0, float f90) 
+{
+    return f0 + (f90 - f0) * pow(1.0 - u, 5.0);
+}
+
 float Fd_Lambert()
 {
     return 1.0 / PI;
+}
+
+float Fd_Burley(float NoV, float NoL, float LoH, float roughness) 
+{
+    float f90 = 0.5f + 2.0f * roughness * LoH * LoH;
+    float lightScatter = F_Schlick_U(NoL, 1.0, f90);
+    float viewScatter = F_Schlick_U(NoV, 1.0, f90);
+    return lightScatter * viewScatter * (1.0 / PI);
 }
 
 //Remember
@@ -66,14 +84,16 @@ void main()
     float ambientColor = 0.085f;
 
     float D = D_GGX(NoH, roughness);
-    float G = V_GGXCorrelated(NoV, NoL, roughness);
     vec3 F = F_Schlick(LoH, 0.0, 1.0);
+    float G = V_GGXCorrelated(NoV, NoL, roughness);
 
     vec3 sBRDF = (D * G) * F ;
 
     vec3 diffuseColor = vec3(1,1,1);
-    vec3 dBRDF = diffuseColor * Fd_Lambert();
+    //vec3 dBRDF = diffuseColor * Fd_Lambert();
+    vec3 dBRDF = color.rgb * 0.05 + Fd_Burley(NoV, NoL, LoH, roughness);
 
-    outColor = color + vec4(dBRDF,1.0f) + vec4(sBRDF,1.0f);
+    //outColor = color + vec4(dBRDF,1.0f) + vec4(sBRDF,1.0f);
+    outColor = vec4(dBRDF,1.0f);
     //outColor = color * vec4(fragColor,1.0f);;
 }

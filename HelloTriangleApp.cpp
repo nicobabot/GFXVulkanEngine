@@ -791,14 +791,14 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     vertexPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertexPipelineCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vertexPipelineCreateInfo.module = vertexShaderModule;
-    vertexPipelineCreateInfo.pName = "main";
+    vertexPipelineCreateInfo.pName = "VSMain";
     vertexPipelineCreateInfo.pSpecializationInfo = nullptr;
 
     VkPipelineShaderStageCreateInfo fragmentPipelineCreateInfo{};
     fragmentPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragmentPipelineCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fragmentPipelineCreateInfo.module = fragmentShaderModule;
-    fragmentPipelineCreateInfo.pName = "main";
+    fragmentPipelineCreateInfo.pName = "PSMain";
     fragmentPipelineCreateInfo.pSpecializationInfo = nullptr;
 
     std::vector<VkPipelineShaderStageCreateInfo>  shaderStages {vertexPipelineCreateInfo,
@@ -813,7 +813,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
     pipelineManager.CreateGraphicsPipeline(graphicPipelineInfo, graphicsPipelineLayout, graphicsPipeline);
 
-    std::vector<char> brdfFragmentShader = ReadFile("CompiledShaders/brdfFrag.spv");
+   /*/ std::vector<char> brdfFragmentShader = ReadFile("CompiledShaders/brdfFrag.spv");
 
     VkShaderModule brdfFragmentShaderModule = CreateShaderModule(brdfFragmentShader);
 
@@ -835,11 +835,11 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     brdfGraphicPipelineInfo.viewportExtent = swapChainExtent;
 
     pipelineManager.CreateGraphicsPipeline(brdfGraphicPipelineInfo,
-        brdfPipelineLayout, brdfPipeline);
+        brdfPipelineLayout, brdfPipeline);*/
 
     vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
     vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
-    vkDestroyShaderModule(logicalDevice, brdfFragmentShaderModule, nullptr);
+   // vkDestroyShaderModule(logicalDevice, brdfFragmentShaderModule, nullptr);
 
 #if COMPUTE_FEATURE
 
@@ -1761,7 +1761,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, brdfPipeline /*graphicsPipeline*/ );
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline );
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -1784,7 +1784,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        brdfPipelineLayout /*graphicsPipelineLayout*/ , 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+        graphicsPipelineLayout , 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(modelLoader.indices.size()), 1, 0, 0, 0);
 

@@ -38,9 +38,10 @@ void ModelLoader::LoadModel()
 
 			vertex.position = 
 			{
-				attribute.vertices[3 * index.vertex_index + 0],
-				attribute.vertices[3 * index.vertex_index + 1],
-				attribute.vertices[3 * index.vertex_index + 2]
+				attribute.vertices[4 * index.vertex_index + 0],
+				attribute.vertices[4 * index.vertex_index + 1],
+				attribute.vertices[4 * index.vertex_index + 2],
+				attribute.vertices[4 * index.vertex_index + 3]
 			};
 
 			vertex.texCoord =
