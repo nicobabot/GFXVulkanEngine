@@ -74,7 +74,7 @@ float4 FilamentBrdfLight(PSInput input, float4 l)
     //F - Fresnel, highlight when gazing angles
 
     float4 v = normalize(input.viewPos - input.fragPos);
-    float4 h = normalize(l + v);
+    float4 h = normalize( v + l );
     float roughness = 0.36f;
 
     float NoL = saturate(dot(input.normal, l));
@@ -85,14 +85,17 @@ float4 FilamentBrdfLight(PSInput input, float4 l)
     float4 diffuseColor = imageTexture.Sample(mySampler, input.fragTexCoord.rg);
     float ambientColor = 0.84f;
 
+    float specularStrength = 0.1f;
     float D = D_GGX(NoH, roughness);
-    float3 F = F_Schlick(LoH, 0.0, 1.0);
+    float3 F = F_Schlick_U(LoH, 0.0, 1.0);
     float G = V_GGXCorrelated(NoV, NoL, roughness);
-    float3 sBRDF = (D * G) * F ;
+    float3 sBRDF = (D * G) ;//* F ;
+    sBRDF *= specularStrength;
 
     float3 dBRDF = diffuseColor * Fd_Lambert();
     //float3 dBRDF = diffuseColor * Fd_Burley(NoV, NoL, LoH, roughness);
 
+    //return float4(sBRDF,1.0f) * NoL;
     return (float4(dBRDF,1.0f) + float4(sBRDF,1.0f)) * NoL;
 }
 
