@@ -6,7 +6,7 @@
 
 void InputHandler::Init()
 {
-	position = glm::vec3(0.0f,4.0f,0.0f);
+	position = glm::vec3(0.0f,0.0f,-4.0f);
 }
 
 void InputHandler::ReactToEvents(GLFWwindow &window)
@@ -24,11 +24,11 @@ void InputHandler::ReactToEvents(GLFWwindow &window)
 	}
 	if (glfwGetKey(&window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		position.x -= increaseValue;
+		position.x += increaseValue;
 	}
 	if (glfwGetKey(&window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		position.x += increaseValue;
+		position.x -= increaseValue;
 	}
 	if (glfwGetKey(&window, GLFW_KEY_UP) == GLFW_PRESS)
 	{

@@ -1850,10 +1850,12 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
         std::chrono::seconds::period>(startTime - currentTime).count();
 
     UniformBufferObject ubo{};
-    ubo.modelM = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(0,0,1));
+    //ubo.modelM = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(0,1,0));
+    ubo.modelM = glm::mat4(1.0f);
     glm::vec3 eyePos = inputHandler.GetPosition();
+    eyePos.y *= -1;
     ubo.viewPos = eyePos;
-    ubo.viewM = glm::lookAt(eyePos, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
+    ubo.viewM = glm::lookAt(eyePos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
     ubo.projM = glm::perspective(glm::radians(45.0f), 
         swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 500.0f);
     ubo.projM[1][1] *= -1;
