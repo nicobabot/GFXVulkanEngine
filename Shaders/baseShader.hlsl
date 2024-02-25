@@ -73,13 +73,14 @@ float4 FilamentBrdfLight(PSInput input, float4 l)
     //G - Geomatry shadowing/maksing
     //F - Fresnel, highlight when gazing angles
 
-    float4 v = normalize(input.viewPos - input.fragPos);
-    float4 h = normalize( v + l );
+    float4 n = input.normal;
+    float4 v = normalize(input.fragPos - input.viewPos);
+    float4 h = normalize( l + v );
     float roughness = 0.36f;
 
-    float NoL = saturate(dot(input.normal, l));
-    float NoV = saturate(dot(input.normal, v));
-    float NoH = saturate(dot(input.normal, h));
+    float NoL = saturate(dot(n, l));
+    float NoV = saturate(dot(n, v));
+    float NoH = saturate(dot(n, h));
     float LoH = saturate(dot(l, h));
 
     float4 diffuseColor = imageTexture.Sample(mySampler, input.fragTexCoord.rg);
@@ -89,13 +90,13 @@ float4 FilamentBrdfLight(PSInput input, float4 l)
     float D = D_GGX(NoH, roughness);
     float3 F = F_Schlick_U(LoH, 0.0, 1.0);
     float G = V_GGXCorrelated(NoV, NoL, roughness);
-    float3 sBRDF = (D * G) ;//* F ;
+    float3 sBRDF = (D * G); // * F ;
     sBRDF *= specularStrength;
 
     float3 dBRDF = diffuseColor * Fd_Lambert();
     //float3 dBRDF = diffuseColor * Fd_Burley(NoV, NoL, LoH, roughness);
 
-    //return float4(sBRDF,1.0f) * NoL;
+    //return float4(dBRDF,1.0f) * NoL;
     return (float4(dBRDF,1.0f) + float4(sBRDF,1.0f)) * NoL;
 }
 
@@ -120,8 +121,10 @@ PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR,
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    float3 lightPos = float3(2,5,-5);
-    float3 lightDir = normalize(lightPos - input.fragPos);
+    //float3 lightPos = float3(2,5,-5);
+    //float3 lightDir = normalize(lightPos - input.fragPos);
+    float3 lightPos = float3(500,-500,0);
+    float3 lightDir = normalize(input.fragPos - lightPos);
     //return PhongIlumination(input, float4(lightDir,1.0f));
     return FilamentBrdfLight(input, float4(lightDir,1.0f));
     //return DirectionalLight(input.fragColor, input);
