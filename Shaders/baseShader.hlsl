@@ -29,6 +29,24 @@ SamplerState mySampler : register(s1);
 
 #include "brdf.hlsl"
 
+PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR, 
+    float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
+{
+    PSInput result;
+    
+    float4x4 MVP = (mul(mul(ubo.projM, ubo.viewM),ubo.modelM)); 
+    result.position = mul(MVP, inPosition);
+    result.fragColor = float4(inColor,1.0f);
+    result.normal = normalize(float4(inNormal, 1.0f));
+    result.fragPos = mul(ubo.modelM, inPosition);
+    //result.viewPosF = ubo.inViewPosF;
+    //result.debugUtilF = ubo.debugUtil;
+    result.fragTexCoord = float3(inTexCoord, 1.0f);
+    result.viewPos = float4(ubo.viewPos,1.0f);
+
+    return result;
+}
+
 float4 DirectionalLight(float4 fragmentColor, PSInput input)
 {
     float3 lightPos = float3(0,-5, 0);
@@ -74,8 +92,8 @@ float4 FilamentBrdfLight(PSInput input, float4 l)
     //F - Fresnel, highlight when gazing angles
 
     float4 n = input.normal;
-    float4 v = normalize(input.fragPos - input.viewPos);
-    float4 h = normalize( l + v );
+    float4 v = normalize(input.viewPos - input.fragPos);
+    float4 h = normalize( v + l );
     float roughness = 0.36f;
 
     float NoL = saturate(dot(n, l));
@@ -86,11 +104,11 @@ float4 FilamentBrdfLight(PSInput input, float4 l)
     float4 diffuseColor = imageTexture.Sample(mySampler, input.fragTexCoord.rg);
     float ambientColor = 0.84f;
 
-    float specularStrength = 0.1f;
+    float specularStrength = 1.0f;
     float D = D_GGX(NoH, roughness);
     float3 F = F_Schlick_U(LoH, 0.0, 1.0);
     float G = V_GGXCorrelated(NoV, NoL, roughness);
-    float3 sBRDF = (D * G); // * F ;
+    float3 sBRDF = (D * G) * F ;
     sBRDF *= specularStrength;
 
     float3 dBRDF = diffuseColor * Fd_Lambert();
@@ -98,25 +116,6 @@ float4 FilamentBrdfLight(PSInput input, float4 l)
 
     //return float4(dBRDF,1.0f) * NoL;
     return (float4(dBRDF,1.0f) + float4(sBRDF,1.0f)) * NoL;
-}
-
-
-PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR, 
-    float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
-{
-    PSInput result;
-    
-    float4x4 MVP = (mul(mul(ubo.projM, ubo.viewM),ubo.modelM)); 
-    result.position = mul(MVP, inPosition);
-    result.fragColor = float4(inColor,1.0f);
-    result.normal = normalize(float4(inNormal, 1.0f));
-    result.fragPos = mul(ubo.modelM, inPosition);
-    //result.viewPosF = ubo.inViewPosF;
-    //result.debugUtilF = ubo.debugUtil;
-    result.fragTexCoord = float3(inTexCoord, 1.0f);
-    result.viewPos = float4(ubo.viewPos,1.0f);
-
-    return result;
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
