@@ -2,7 +2,7 @@ struct PSInput
 {
     float4 position : SV_POSITION;
 	float4 fragColor : COLOR0;
-    float4 normal : NORMAL;
+    float3 normal : NORMAL;
     float3 fragTexCoord : TEXCOORD0;
     float4 fragPos : POSITION1;
     float4 viewPos : POSITION2;
@@ -37,7 +37,7 @@ PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR,
     float4x4 MVP = (mul(mul(ubo.projM, ubo.viewM),ubo.modelM)); 
     result.position = mul(MVP, inPosition);
     result.fragColor = float4(inColor,1.0f);
-    result.normal = normalize(float4(inNormal, 1.0f));
+    result.normal = normalize(inNormal);
     result.fragPos = mul(ubo.modelM, inPosition);
     //result.viewPosF = ubo.inViewPosF;
     //result.debugUtilF = ubo.debugUtil;
@@ -82,7 +82,7 @@ float4 PhongIlumination(PSInput input, float4 lightDir)
     return (diffuseColor + specularColor) * texColor;
 }
 
-float4 FilamentBrdfLight(PSInput input, float4 l)
+float4 FilamentBrdfLight(PSInput input, float3 l)
 {
 
     //Specular BRDF
@@ -91,9 +91,9 @@ float4 FilamentBrdfLight(PSInput input, float4 l)
     //G - Geomatry shadowing/maksing
     //F - Fresnel, highlight when gazing angles
 
-    float4 n = input.normal;
-    float4 v = normalize(input.viewPos - input.fragPos);
-    float4 h = normalize( v + l );
+    float3 n = input.normal;
+    float3 v = normalize(input.viewPos - input.fragPos);
+    float3 h = normalize( v + l );
     float roughness = 0.36f;
 
     float NoL = saturate(dot(n, l));
@@ -104,7 +104,7 @@ float4 FilamentBrdfLight(PSInput input, float4 l)
     float4 diffuseColor = imageTexture.Sample(mySampler, input.fragTexCoord.rg);
     float ambientColor = 0.84f;
 
-    float specularStrength = 1.0f;
+    float specularStrength = 50.0f;
     float D = D_GGX(NoH, roughness);
     float3 F = F_Schlick_U(LoH, 0.0, 1.0);
     float G = V_GGXCorrelated(NoV, NoL, roughness);
@@ -122,9 +122,9 @@ float4 PSMain(PSInput input) : SV_TARGET
 {
     //float3 lightPos = float3(2,5,-5);
     //float3 lightDir = normalize(lightPos - input.fragPos);
-    float3 lightPos = float3(500,-500,0);
-    float3 lightDir = normalize(input.fragPos - lightPos);
+    float3 lightPos = float3(0,10,-10);
+    float3 lightDir = normalize(input.fragPos.xyz - lightPos);
     //return PhongIlumination(input, float4(lightDir,1.0f));
-    return FilamentBrdfLight(input, float4(lightDir,1.0f));
+    return FilamentBrdfLight(input, -lightDir);
     //return DirectionalLight(input.fragColor, input);
 }
