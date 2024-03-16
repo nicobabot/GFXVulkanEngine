@@ -94,7 +94,7 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
     float3 n = input.normal;
     float3 v = normalize(input.viewPos - input.fragPos);
     float3 h = normalize( v + l );
-    float roughness = 0.5f;
+    float roughness = 0.2f;
 
     float NoL = saturate(dot(n, l));
     float NoV = saturate(dot(n, v));
@@ -104,7 +104,7 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
     float4 diffuseColor = imageTexture.Sample(mySampler, input.fragTexCoord.rg);
     float ambientColor = 1.0f;
 
-    float specularStrength = 0.25f;
+    float specularStrength = 0.2f;
     float D = D_GGX(NoH, roughness);
     float3 F = F_Schlick_U(LoH, 0.0, 1.0);
     float G = V_GGXCorrelated(NoV, NoL, roughness);

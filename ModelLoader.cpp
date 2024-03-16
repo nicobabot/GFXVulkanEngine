@@ -58,10 +58,10 @@ void ModelLoader::LoadModel()
 	if (basicGeometry) 
 	{
 		//Assign vertex/index values to basic geometry
-		vertices = basicGeometryVertices;
-		indices = basicGeometryIndices;
+		//vertices = basicGeometryVertices;
+		//indices = basicGeometryIndices;
 
-		//GenerateSphereVertices(20, 20, 1.0f, vertices, indices);
+		GenerateSphereVertices(20, 20, 1.0f, vertices, indices);
 
 		return;
 	}
