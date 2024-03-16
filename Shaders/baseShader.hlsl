@@ -94,7 +94,7 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
     float3 n = input.normal;
     float3 v = normalize(input.viewPos - input.fragPos);
     float3 h = normalize( v + l );
-    float roughness = 0.36f;
+    float roughness = 0.5f;
 
     float NoL = saturate(dot(n, l));
     float NoV = saturate(dot(n, v));
@@ -102,13 +102,13 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
     float LoH = saturate(dot(l, h));
 
     float4 diffuseColor = imageTexture.Sample(mySampler, input.fragTexCoord.rg);
-    float ambientColor = 0.84f;
+    float ambientColor = 1.0f;
 
-    float specularStrength = 1.0f;
+    float specularStrength = 0.25f;
     float D = D_GGX(NoH, roughness);
     float3 F = F_Schlick_U(LoH, 0.0, 1.0);
     float G = V_GGXCorrelated(NoV, NoL, roughness);
-    float3 sBRDF = (D * G);// * F ;
+    float3 sBRDF = (D * G); //* F ;
     sBRDF *= specularStrength;
 
     float3 dBRDF = diffuseColor * Fd_Lambert();
@@ -121,11 +121,14 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
+    //return float4(input.normal,1.0f);
+
     //float3 lightPos = float3(2,5,-5);
     //float3 lightDir = normalize(lightPos - input.fragPos);
-    float3 lightPos = float3(0,0,-10);
-    float3 lightDir = normalize(input.fragPos.xyz - lightPos);
+    //float3 lightPos = float3(0,3,0);
+    float3 lightDir = float3(-0.32, -0.77, 0.56);
+    //float3 lightDir = normalize(input.fragPos.xyz - lightPos);
     //return PhongIlumination(input, float4(lightDir,1.0f));
-    return FilamentBrdfLight(input, lightDir);
+    return FilamentBrdfLight(input, -lightDir);
     //return DirectionalLight(input.fragColor, input);
 }

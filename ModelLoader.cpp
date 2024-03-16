@@ -31,7 +31,7 @@ void GenerateSphereVertices(uint32_t numRings, uint32_t numSegments, float radiu
 			float u = static_cast<float>(segment) / static_cast<float>(numSegments);
 			float v = static_cast<float>(ring) / static_cast<float>(numRings);
 
-			vertices.push_back({ {x, y, z},	WHITE, {u, v}	, {nx, ny, nz} });
+			vertices.push_back({ {x, y, z},	WHITE, {u, v}	, {-nx, ny, -nz} });
 		}
 	}
 
@@ -58,10 +58,10 @@ void ModelLoader::LoadModel()
 	if (basicGeometry) 
 	{
 		//Assign vertex/index values to basic geometry
-		//vertices = basicGeometryVertices;
-		//indices = basicGeometryIndices;
+		vertices = basicGeometryVertices;
+		indices = basicGeometryIndices;
 
-		GenerateSphereVertices(20, 20, 1.0f, vertices, indices);
+		//GenerateSphereVertices(20, 20, 1.0f, vertices, indices);
 
 		return;
 	}
