@@ -15,6 +15,8 @@
 
 #include "ModelLoader.h"
 #include "GfxPipelineManager.h";
+void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
+    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline);
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
@@ -80,9 +82,9 @@ private:
     GLFWwindow *window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkDevice logicalDevice;
-    VkQueue graphicsQueue;
+    //VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    //VkDevice gfxCtx->logicalDevice;
+    //VkQueue graphicsQueue;
     VkQueue presentationQueue;
     VkQueue computeQueue;
     VkSurfaceKHR surface;
@@ -107,7 +109,7 @@ private:
     VkPipeline computePipeline;
     std::vector<VkFramebuffer> swapchainFramebuffers;
 
-    VkCommandPool commandPool;
+    //VkCommandPool commandPool;
     VkCommandPool computeCommandPool;
 
     //Depth
@@ -168,7 +170,7 @@ private:
 
     InputHandler inputHandler;
     ModelLoader modelLoader;
-    GfxPipelineManager pipelineManager;
+    //GfxPipelineManager pipelineManager;
 
 //Methods
 public:

@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="GfxContext.cpp" />
     <ClCompile Include="GfxObject.cpp" />
     <ClCompile Include="GfxPipelineManager.cpp" />
     <ClCompile Include="HelloTriangleApp.cpp" />
@@ -158,6 +159,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ColorsDef.h" />
+    <ClInclude Include="GfxContext.h" />
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="GfxObject.h" />
     <ClInclude Include="GfxPipelineManager.h" />

@@ -1,9 +1,11 @@
 #include "HelloTriangleApp.h"
 #include "MainDefines.h"
 #include "ComputeObjectsManager.h"
+#include "GfxContext.h"
 
 void HelloTriangleApp::Run()
 {
+    gfxCtx = new GfxContext();
     InitWindow();
     InitVulkan();
     MainLoop();
@@ -266,7 +268,7 @@ void HelloTriangleApp::CreateSurface()
 VkSampleCountFlagBits HelloTriangleApp::GetMaxUsableSampleCount()
 {
     VkPhysicalDeviceProperties prop{};
-    vkGetPhysicalDeviceProperties(physicalDevice, &prop);
+    vkGetPhysicalDeviceProperties(gfxCtx->physicalDevice, &prop);
     VkSampleCountFlags sampleCount = prop.limits.framebufferColorSampleCounts 
         & prop.limits.framebufferDepthSampleCounts;
 
@@ -296,13 +298,13 @@ void HelloTriangleApp::PickPhysicalDevice()
     {
         if (IsSuitableDevice(pDevice)) 
         {
-            physicalDevice = pDevice;
+            gfxCtx->physicalDevice = pDevice;
             msaaSamples = GetMaxUsableSampleCount();
             break;
         }
     }
 
-    if (physicalDevice == VK_NULL_HANDLE) 
+    if (gfxCtx->physicalDevice == VK_NULL_HANDLE)
     {
         throw std::runtime_error("Error finding sutiable device");
     }
@@ -421,7 +423,7 @@ SwapChainSupportDetails HelloTriangleApp::QuerySwapChainSupport(VkPhysicalDevice
 
 void HelloTriangleApp::CreateLogicalDevice()
 {
-    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
+    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(gfxCtx->physicalDevice);
     std::set<uint32_t> queueIndices 
     {
         queueFamilyIndices.graphicsFamily.value(), 
@@ -465,25 +467,23 @@ void HelloTriangleApp::CreateLogicalDevice()
         logicalDeviceCreateInfo.enabledLayerCount = 0;
     }
 
-    if (vkCreateDevice(physicalDevice, &logicalDeviceCreateInfo, nullptr, &logicalDevice) != VK_SUCCESS) 
+    if (vkCreateDevice(gfxCtx->physicalDevice, &logicalDeviceCreateInfo, nullptr, &gfxCtx->logicalDevice) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating logical device");
     }
-
-    pipelineManager.Init(logicalDevice);
 }
 
 void HelloTriangleApp::GetLogicalDeviceQueues()
 {
-    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
-    vkGetDeviceQueue(logicalDevice, queueFamilyIndices.graphicsFamily.value(), 0, &graphicsQueue);
-    vkGetDeviceQueue(logicalDevice, queueFamilyIndices.presentationFamily.value(), 0, &presentationQueue);
-    vkGetDeviceQueue(logicalDevice, queueFamilyIndices.graphicsAndComputeFamily.value(), 0, &computeQueue);
+    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(gfxCtx->physicalDevice);
+    vkGetDeviceQueue(gfxCtx->logicalDevice, queueFamilyIndices.graphicsFamily.value(), 0, &gfxCtx->graphicsQueue);
+    vkGetDeviceQueue(gfxCtx->logicalDevice, queueFamilyIndices.presentationFamily.value(), 0, &presentationQueue);
+    vkGetDeviceQueue(gfxCtx->logicalDevice, queueFamilyIndices.graphicsAndComputeFamily.value(), 0, &computeQueue);
 }
 
 void HelloTriangleApp::CreateSwapChain()
 {
-    SwapChainSupportDetails swapChainDetails = QuerySwapChainSupport(physicalDevice);
+    SwapChainSupportDetails swapChainDetails = QuerySwapChainSupport(gfxCtx->physicalDevice);
 
     VkSurfaceFormatKHR swapChainFormat = ChooseSwapSurfaceFormat(swapChainDetails.formats);
     swapChainImageFormat = swapChainFormat.format;
@@ -509,7 +509,7 @@ void HelloTriangleApp::CreateSwapChain()
     //VK_IMAGE_USAGE_TRANSFER_DST_BIT -> to render to a separate image first to perform operations (post processing)
     createSwapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
+    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(gfxCtx->physicalDevice);
     uint32_t familyIndices[] = 
     { 
         queueFamilyIndices.graphicsFamily.value(), 
@@ -534,15 +534,15 @@ void HelloTriangleApp::CreateSwapChain()
     //TODO RECREATE SWAPCHAIN (resize?)
     createSwapChainInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    if (vkCreateSwapchainKHR(logicalDevice, &createSwapChainInfo, nullptr, &swapChain) != VK_SUCCESS) 
+    if (vkCreateSwapchainKHR(gfxCtx->logicalDevice, &createSwapChainInfo, nullptr, &swapChain) != VK_SUCCESS) 
     {
         throw std::runtime_error("Error creating SwapChain");
     }
 
     uint32_t swapchainImagesCount = 0;
-    vkGetSwapchainImagesKHR(logicalDevice, swapChain, &swapchainImagesCount, nullptr);
+    vkGetSwapchainImagesKHR(gfxCtx->logicalDevice, swapChain, &swapchainImagesCount, nullptr);
     swapChainImages.resize(swapchainImagesCount);
-    vkGetSwapchainImagesKHR(logicalDevice, swapChain, &swapchainImagesCount, swapChainImages.data());
+    vkGetSwapchainImagesKHR(gfxCtx->logicalDevice, swapChain, &swapchainImagesCount, swapChainImages.data());
 }
 
 VkSurfaceFormatKHR HelloTriangleApp::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
@@ -618,7 +618,7 @@ VkImageView HelloTriangleApp::CreateImageView(VkImage image, VkFormat format,
     imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
     imageViewCreateInfo.subresourceRange.layerCount = 1;
 
-    if (vkCreateImageView(logicalDevice, &imageViewCreateInfo, nullptr, &newImageView) != VK_SUCCESS)
+    if (vkCreateImageView(gfxCtx->logicalDevice, &imageViewCreateInfo, nullptr, &newImageView) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating image view");
     }
@@ -708,7 +708,7 @@ void HelloTriangleApp::CreateRenderPass()
     renderPassCreateInfo.dependencyCount = 1;
     renderPassCreateInfo.pDependencies = &subpassDependency;
 
-    if (vkCreateRenderPass(logicalDevice, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS) 
+    if (vkCreateRenderPass(gfxCtx->logicalDevice, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS) 
     {
         throw std::runtime_error("Error creating renderpass!");
     }
@@ -737,7 +737,7 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     descriptorSetCreateInfo.pBindings = bindings.data();
 
-    if (vkCreateDescriptorSetLayout(logicalDevice, &descriptorSetCreateInfo,
+    if (vkCreateDescriptorSetLayout(gfxCtx->logicalDevice, &descriptorSetCreateInfo,
         nullptr, &descriptorSetLayout) != VK_SUCCESS) 
     {
         throw std::runtime_error("Error creating descriptor set layout!");
@@ -769,7 +769,7 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     computeLayoutInfo.bindingCount = layoutBindings.size();
     computeLayoutInfo.pBindings = layoutBindings.data();
 
-    if (vkCreateDescriptorSetLayout(logicalDevice, &computeLayoutInfo,
+    if (vkCreateDescriptorSetLayout(gfxCtx->logicalDevice, &computeLayoutInfo,
         nullptr, &computeDescriptorSetLayout) != VK_SUCCESS) 
     {
         throw std::runtime_error("Error creating compute descriptr set layout!");
@@ -811,7 +811,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     graphicPipelineInfo.msaaSamples = msaaSamples;
     graphicPipelineInfo.viewportExtent = swapChainExtent;
 
-    pipelineManager.CreateGraphicsPipeline(graphicPipelineInfo, graphicsPipelineLayout, graphicsPipeline);
+    CreateGraphicsPipeline_Internal(graphicPipelineInfo, graphicsPipelineLayout, graphicsPipeline);
 
    /*/ std::vector<char> brdfFragmentShader = ReadFile("CompiledShaders/brdfFrag.spv");
 
@@ -834,12 +834,12 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     brdfGraphicPipelineInfo.msaaSamples = msaaSamples;
     brdfGraphicPipelineInfo.viewportExtent = swapChainExtent;
 
-    pipelineManager.CreateGraphicsPipeline(brdfGraphicPipelineInfo,
+    CreateGraphicsPipeline_Internal(brdfGraphicPipelineInfo,
         brdfPipelineLayout, brdfPipeline);*/
 
-    vkDestroyShaderModule(logicalDevice, vertexShaderModule, nullptr);
-    vkDestroyShaderModule(logicalDevice, fragmentShaderModule, nullptr);
-   // vkDestroyShaderModule(logicalDevice, brdfFragmentShaderModule, nullptr);
+    vkDestroyShaderModule(gfxCtx->logicalDevice, vertexShaderModule, nullptr);
+    vkDestroyShaderModule(gfxCtx->logicalDevice, fragmentShaderModule, nullptr);
+   // vkDestroyShaderModule(gfxCtx->logicalDevice, brdfFragmentShaderModule, nullptr);
 
 #if COMPUTE_FEATURE
 
@@ -857,7 +857,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     computePipelineLayoutInfo.setLayoutCount = 1;
     computePipelineLayoutInfo.pSetLayouts = &computeDescriptorSetLayout;
 
-    if (vkCreatePipelineLayout(logicalDevice,
+    if (vkCreatePipelineLayout(gfxCtx->logicalDevice,
         &computePipelineLayoutInfo, nullptr, &computePipelineLayout) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating compute pipeline layout!");
@@ -868,13 +868,13 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     computePipelineInfo.layout = computePipelineLayout;
     computePipelineInfo.stage = computePipelineCreateInfo;
 
-    if(vkCreateComputePipelines(logicalDevice, VK_NULL_HANDLE, 1, 
+    if(vkCreateComputePipelines(gfxCtx->logicalDevice, VK_NULL_HANDLE, 1, 
         &computePipelineInfo, nullptr, &computePipeline) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating compute pipeline!");
     }
 
-    vkDestroyShaderModule(logicalDevice, computeShaderModule, nullptr);
+    vkDestroyShaderModule(gfxCtx->logicalDevice, computeShaderModule, nullptr);
 #endif//#if COMPUTE_FEATURE
 }
 
@@ -899,7 +899,7 @@ void HelloTriangleApp::CreateFramebuffers()
         framebufferCreateInfo.height = swapChainExtent.height;
         framebufferCreateInfo.layers = 1;
 
-        if (vkCreateFramebuffer(logicalDevice, &framebufferCreateInfo, nullptr, &swapchainFramebuffers[i]) != VK_SUCCESS) 
+        if (vkCreateFramebuffer(gfxCtx->logicalDevice, &framebufferCreateInfo, nullptr, &swapchainFramebuffers[i]) != VK_SUCCESS) 
         {   
             throw std::runtime_error("Error creating framebuffer!");
         }
@@ -908,21 +908,21 @@ void HelloTriangleApp::CreateFramebuffers()
 
 void HelloTriangleApp::CreateCommandPool()
 {
-    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
+    QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(gfxCtx->physicalDevice);
 
     VkCommandPoolCreateInfo commandoPoolCreateInfo{};
     commandoPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     commandoPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     commandoPoolCreateInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 
-    if (vkCreateCommandPool(logicalDevice, &commandoPoolCreateInfo, nullptr, &commandPool) != VK_SUCCESS)
+    if (vkCreateCommandPool(gfxCtx->logicalDevice, &commandoPoolCreateInfo, nullptr, &gfxCtx->commandPool) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating command pool!");
     }
 
     commandoPoolCreateInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
 
-    if (vkCreateCommandPool(logicalDevice, &commandoPoolCreateInfo, nullptr, &computeCommandPool) != VK_SUCCESS)
+    if (vkCreateCommandPool(gfxCtx->logicalDevice, &commandoPoolCreateInfo, nullptr, &computeCommandPool) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating compute command pool!");
     }
@@ -934,7 +934,7 @@ VkFormat HelloTriangleApp::FindSupportedFormat(std::vector<VkFormat> candidates,
     for (VkFormat format : candidates) 
     {
         VkFormatProperties formatProperties;
-        vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
+        vkGetPhysicalDeviceFormatProperties(gfxCtx->physicalDevice, format, &formatProperties);
 
         if (tiling == VK_IMAGE_TILING_LINEAR && 
             (formatProperties.linearTilingFeatures & features) == features) 
@@ -995,36 +995,12 @@ void HelloTriangleApp::CreateDepthResources()
 
 VkCommandBuffer HelloTriangleApp::BeginSingleTimeCommandBuffer()
 {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    //TODO: Create a separate commandPool (VK_COMMAND_POOL_CREATE_TRANSIENT_BIT) for this short living buffers
-    allocInfo.commandPool = commandPool;
-    allocInfo.commandBufferCount = 1;
-
-    VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
-
-    VkCommandBufferBeginInfo commandBufferBeginInfo{};
-    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
-
-    return commandBuffer;
+    return BeginSingleTimeCommandBuffer_Internal();
 }
 
 void HelloTriangleApp::EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer)
 {
-    vkEndCommandBuffer(commandBuffer);
-
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.pCommandBuffers = &commandBuffer;
-    submitInfo.commandBufferCount = 1;
-    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphicsQueue);
-
-    vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
+    EndSingleTimeCommandBuffer_Internal(commandBuffer);
 }
 
 void HelloTriangleApp::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
@@ -1149,13 +1125,13 @@ void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mip
     imageCreateInfo.samples = numSample;
     imageCreateInfo.flags = 0;
 
-    if (vkCreateImage(logicalDevice, &imageCreateInfo, nullptr, &image) != VK_SUCCESS)
+    if (vkCreateImage(gfxCtx->logicalDevice, &imageCreateInfo, nullptr, &image) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating image!");
     }
 
     VkMemoryRequirements memoryRequirements;
-    vkGetImageMemoryRequirements(logicalDevice, image, &memoryRequirements);
+    vkGetImageMemoryRequirements(gfxCtx->logicalDevice, image, &memoryRequirements);
 
     VkMemoryAllocateInfo memoryAllocateInfo{};
     memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1163,12 +1139,12 @@ void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mip
     memoryAllocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits,
         properties);
 
-    if (vkAllocateMemory(logicalDevice, &memoryAllocateInfo, nullptr, &imageMemory) != VK_SUCCESS)
+    if (vkAllocateMemory(gfxCtx->logicalDevice, &memoryAllocateInfo, nullptr, &imageMemory) != VK_SUCCESS)
     {
         throw std::runtime_error("Error allocating memory for created image!");
     }
 
-    vkBindImageMemory(logicalDevice, image, imageMemory, 0);
+    vkBindImageMemory(gfxCtx->logicalDevice, image, imageMemory, 0);
 }
 
 void HelloTriangleApp::CreateTextureImage()
@@ -1197,9 +1173,9 @@ void HelloTriangleApp::CreateTextureImage()
         stagingBuffer, staginBufferMemory);
 
     void* data;
-    vkMapMemory(logicalDevice, staginBufferMemory, 0, imageSize, 0, &data);
+    vkMapMemory(gfxCtx->logicalDevice, staginBufferMemory, 0, imageSize, 0, &data);
     memcpy(data, pixels, static_cast<size_t>(imageSize));
-    vkUnmapMemory(logicalDevice, staginBufferMemory);
+    vkUnmapMemory(gfxCtx->logicalDevice, staginBufferMemory);
 
     modelLoader.FreeTextureArrayInfo(pixels);
 
@@ -1217,14 +1193,14 @@ void HelloTriangleApp::CreateTextureImage()
         static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
     GenerateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
 
-    vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
-    vkFreeMemory(logicalDevice, staginBufferMemory, nullptr);
+    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, staginBufferMemory, nullptr);
 }
 
 void HelloTriangleApp::GenerateMipmaps(VkImage image, VkFormat format, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels)
 {
     VkFormatProperties formatProp{};
-    vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProp);
+    vkGetPhysicalDeviceFormatProperties(gfxCtx->physicalDevice, format, &formatProp);
 
     //Not all formats support linear blitting
     //TODO: implement software runtime mipmap generation for non suported types (stb_image_resize)
@@ -1332,12 +1308,12 @@ void HelloTriangleApp::CreateTextureSampler()
     samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
     VkPhysicalDeviceFeatures dFeatures;
-    vkGetPhysicalDeviceFeatures(physicalDevice, &dFeatures);
+    vkGetPhysicalDeviceFeatures(gfxCtx->physicalDevice, &dFeatures);
     samplerCreateInfo.anisotropyEnable = dFeatures.samplerAnisotropy ? VK_TRUE : VK_FALSE;
     
     //TODO: store phys device properties in global variable instead of query here
     VkPhysicalDeviceProperties physicalDeviceProperties;
-    vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+    vkGetPhysicalDeviceProperties(gfxCtx->physicalDevice, &physicalDeviceProperties);
 
     samplerCreateInfo.maxAnisotropy = physicalDeviceProperties.limits.maxSamplerAnisotropy;
 
@@ -1352,7 +1328,7 @@ void HelloTriangleApp::CreateTextureSampler()
     samplerCreateInfo.maxLod = static_cast<float>(mipLevels);
     samplerCreateInfo.minLod = 0.0f;
 
-    if (vkCreateSampler(logicalDevice, &samplerCreateInfo, nullptr, &textureSampler) != VK_SUCCESS) 
+    if (vkCreateSampler(gfxCtx->logicalDevice, &samplerCreateInfo, nullptr, &textureSampler) != VK_SUCCESS) 
     {
         throw std::runtime_error("Error creating sampler!");
     }
@@ -1362,33 +1338,7 @@ void HelloTriangleApp::CreateTextureSampler()
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
     VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory)
 {
-    VkBufferCreateInfo createBuffer{};
-    createBuffer.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createBuffer.size = size;
-    createBuffer.usage = usageFlags;
-    createBuffer.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    if (vkCreateBuffer(logicalDevice, &createBuffer, nullptr, &newBuffer) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating vertex buffer!");
-    }
-
-    VkMemoryRequirements bufferMemoryRequirements;
-    vkGetBufferMemoryRequirements(logicalDevice, newBuffer, &bufferMemoryRequirements);
-
-    //FindMemoryType
-    VkMemoryAllocateInfo allocateMemory{};
-    allocateMemory.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocateMemory.allocationSize = bufferMemoryRequirements.size;
-    allocateMemory.memoryTypeIndex = FindMemoryType(bufferMemoryRequirements.memoryTypeBits,
-        memoryFlags);
-
-    if (vkAllocateMemory(logicalDevice, &allocateMemory, nullptr, &bufferMemory) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error allocating vertex buffer memory");
-    }
-
-    vkBindBufferMemory(logicalDevice, newBuffer, bufferMemory, 0);
+    CreateBuffer_Internal(size, usageFlags, memoryFlags, newBuffer, bufferMemory);
 }
 
 void HelloTriangleApp::CreateVertexBuffers()
@@ -1403,16 +1353,16 @@ void HelloTriangleApp::CreateVertexBuffers()
         stagingBuffer, stagingBufferMemory);
 
     void* data;
-    vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0,  &data);
+    vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0,  &data);
     memcpy(data, modelVertices.data(), (size_t)bufferSize);
-    vkUnmapMemory(logicalDevice, stagingBufferMemory);
+    vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
     CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,vertexBuffer, vertexBufferMemory);
 
     CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);    
-    vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
-    vkFreeMemory(logicalDevice, stagingBufferMemory, nullptr);
+    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
 }
 
 void HelloTriangleApp::CreateIndexBuffers()
@@ -1427,16 +1377,16 @@ void HelloTriangleApp::CreateIndexBuffers()
         stagingBuffer, stagingBufferMemory);
     
     void*data;
-    vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+    vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
     memcpy(data, modelIndices.data(), bufferSize);
-    vkUnmapMemory(logicalDevice, stagingBufferMemory);
+    vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
     CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
 
     CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
-    vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
-    vkFreeMemory(logicalDevice, stagingBufferMemory, nullptr);
+    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
 }
 
 void HelloTriangleApp::CreateUniformBuffers()
@@ -1453,7 +1403,7 @@ void HelloTriangleApp::CreateUniformBuffers()
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
             uniformBuffers[i], uniformBuffersMemory[i]);
 
-        vkMapMemory(logicalDevice, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+        vkMapMemory(gfxCtx->logicalDevice, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
     }
 
 }
@@ -1474,9 +1424,9 @@ void HelloTriangleApp::CreateShaderStorageBuffers()
         stagingBuffer, stagingBufferMemory);
 
     void* data;
-    vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+    vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
     memcpy(data, objects.data(), bufferSize);
-    vkUnmapMemory(logicalDevice, stagingBufferMemory);
+    vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
     for(int i=0; i<MAX_FRAMES_IN_FLIGHT; ++i)
     {
@@ -1487,8 +1437,8 @@ void HelloTriangleApp::CreateShaderStorageBuffers()
         CopyBuffer(stagingBuffer, shaderStorageBuffers[i], bufferSize);
     }
 
-    vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
-    vkFreeMemory(logicalDevice, stagingBufferMemory, nullptr);
+    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
 }
 
 void HelloTriangleApp::CreateDescriptorPool()
@@ -1505,7 +1455,7 @@ void HelloTriangleApp::CreateDescriptorPool()
     descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSize.data();
     descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    if (vkCreateDescriptorPool(logicalDevice, &descriptorPoolCreateInfo,
+    if (vkCreateDescriptorPool(gfxCtx->logicalDevice, &descriptorPoolCreateInfo,
         nullptr, &descriptorPool) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating descriptor pool!");
@@ -1527,7 +1477,7 @@ void HelloTriangleApp::CreateDescriptorPool()
     computeDescriptorPoolCreateInfo.pPoolSizes = computeDescriptorPoolSize.data();
     computeDescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    if (vkCreateDescriptorPool(logicalDevice, &computeDescriptorPoolCreateInfo,
+    if (vkCreateDescriptorPool(gfxCtx->logicalDevice, &computeDescriptorPoolCreateInfo,
         nullptr, &computeDescriptorPool) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating compute descriptor pool!");
@@ -1545,7 +1495,7 @@ void HelloTriangleApp::CreateDescriptorSets()
     descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
     descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(logicalDevice, &descriptorSetAllocateInfo,
+    if (vkAllocateDescriptorSets(gfxCtx->logicalDevice, &descriptorSetAllocateInfo,
         descriptorSets.data()) != VK_SUCCESS)
     {
         throw std::runtime_error("Error allocating descriptor sets!");
@@ -1560,7 +1510,7 @@ void HelloTriangleApp::CreateDescriptorSets()
     computeDescriptorSetAllocateInfo.pSetLayouts = conmputeLayouts.data();
 
     computeDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(logicalDevice, &computeDescriptorSetAllocateInfo,
+    if (vkAllocateDescriptorSets(gfxCtx->logicalDevice, &computeDescriptorSetAllocateInfo,
         computeDescriptorSets.data()) != VK_SUCCESS)
     {
         throw std::runtime_error("Error allocating compute descriptor sets!");
@@ -1596,7 +1546,7 @@ void HelloTriangleApp::CreateDescriptorSets()
         writeDescriptorSet[1].descriptorCount = 1;
         writeDescriptorSet[1].pImageInfo = &imageInfo;
 
-        vkUpdateDescriptorSets(logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
             writeDescriptorSet.data(), 0, nullptr);
 
 #if COMPUTE_FEATURE
@@ -1636,7 +1586,7 @@ void HelloTriangleApp::CreateDescriptorSets()
         computeWriteDescriptorSet[2].descriptorCount = 1;
         computeWriteDescriptorSet[2].pBufferInfo = &storageBufferInfoCurrentFrame;
 
-        vkUpdateDescriptorSets(logicalDevice, 
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice, 
             computeWriteDescriptorSet.size(), computeWriteDescriptorSet.data(),
             0, nullptr);
 
@@ -1646,6 +1596,7 @@ void HelloTriangleApp::CreateDescriptorSets()
 
 void HelloTriangleApp::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
+    CopyBuffer_Internal(srcBuffer, dstBuffer, size);
     VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer();
 
     VkBufferCopy copyRegion{};
@@ -1664,11 +1615,11 @@ void HelloTriangleApp::CreateCommandBuffers()
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
     commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    commandBufferAllocateInfo.commandPool = commandPool;
+    commandBufferAllocateInfo.commandPool = gfxCtx->commandPool;
     commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     commandBufferAllocateInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
-    if(vkAllocateCommandBuffers(logicalDevice, &commandBufferAllocateInfo, commandBuffers.data()) != VK_SUCCESS)
+    if(vkAllocateCommandBuffers(gfxCtx->logicalDevice, &commandBufferAllocateInfo, commandBuffers.data()) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating command buffer!");
     }
@@ -1678,7 +1629,7 @@ void HelloTriangleApp::CreateCommandBuffers()
     commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     commandBufferAllocateInfo.commandBufferCount = (uint32_t)computeCommandBuffers.size();
 
-    if (vkAllocateCommandBuffers(logicalDevice, &commandBufferAllocateInfo, computeCommandBuffers.data()) != VK_SUCCESS)
+    if (vkAllocateCommandBuffers(gfxCtx->logicalDevice, &commandBufferAllocateInfo, computeCommandBuffers.data()) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating command buffer!");
     }
@@ -1698,9 +1649,9 @@ void HelloTriangleApp::CreateSyncObjects()
 
     for(int i =0; i<MAX_FRAMES_IN_FLIGHT;++i)
     {
-        if (vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-            vkCreateFence(logicalDevice, &fenceCreateInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+        if (vkCreateSemaphore(gfxCtx->logicalDevice, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+            vkCreateSemaphore(gfxCtx->logicalDevice, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+            vkCreateFence(gfxCtx->logicalDevice, &fenceCreateInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("Error creating sync objects!");
         }
@@ -1798,19 +1749,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
 uint32_t HelloTriangleApp::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryFlags)
 {
-    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties{};
-    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &physicalDeviceMemoryProperties);
-
-    for (int i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; ++i) 
-    {
-        if(typeFilter & (1 << i) && memoryFlags && 
-            (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & memoryFlags) == memoryFlags)
-        {
-            return i;
-        }
-    }
-    
-    throw std::runtime_error("Error finding memory type");
+    return FindMemoryType_Internal(typeFilter, memoryFlags);
 }
 
 VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& code)
@@ -1821,7 +1760,7 @@ VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& cod
     shaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
     VkShaderModule shaderModule;
-    if (vkCreateShaderModule(logicalDevice, &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) 
+    if (vkCreateShaderModule(gfxCtx->logicalDevice, &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS) 
     {
         throw std::runtime_error("Error creating shader module!");
     }
@@ -1838,7 +1777,7 @@ void HelloTriangleApp::MainLoop()
         DrawFrame();
     }
 
-    vkDeviceWaitIdle(logicalDevice);
+    vkDeviceWaitIdle(gfxCtx->logicalDevice);
 }
 
 void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
@@ -1867,10 +1806,10 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
 
 void HelloTriangleApp::DrawFrame()
 {
-    vkWaitForFences(logicalDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    vkWaitForFences(gfxCtx->logicalDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex = 0;
-    VkResult result = vkAcquireNextImageKHR(logicalDevice, swapChain, UINT64_MAX,
+    VkResult result = vkAcquireNextImageKHR(gfxCtx->logicalDevice, swapChain, UINT64_MAX,
     imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) 
@@ -1883,7 +1822,7 @@ void HelloTriangleApp::DrawFrame()
         throw std::runtime_error("Error acquiring swapchain image!");
     }
 
-    vkResetFences(logicalDevice, 1, &inFlightFences[currentFrame]);
+    vkResetFences(gfxCtx->logicalDevice, 1, &inFlightFences[currentFrame]);
 
     UpdateUniformBuffers(currentFrame);
 
@@ -1924,7 +1863,7 @@ void HelloTriangleApp::DrawFrame()
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+    if (vkQueueSubmit(gfxCtx->graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
     {
         throw std::runtime_error("Error submitting draw command buffer!");
     }
@@ -1965,7 +1904,7 @@ void HelloTriangleApp::RecreateSwapChain()
         glfwWaitEvents();
     }
     
-    vkDeviceWaitIdle(logicalDevice);
+    vkDeviceWaitIdle(gfxCtx->logicalDevice);
 
     //Clear swpachain resources
     CleanupSwapChain();
@@ -1980,45 +1919,45 @@ void HelloTriangleApp::RecreateSwapChain()
 
 void HelloTriangleApp::CleanupSwapChain()
 {
-    vkDestroyImageView(logicalDevice, depthImageView, nullptr);
-    vkDestroyImage(logicalDevice, depthImage, nullptr);
-    vkFreeMemory(logicalDevice, depthImageMemory, nullptr);
+    vkDestroyImageView(gfxCtx->logicalDevice, depthImageView, nullptr);
+    vkDestroyImage(gfxCtx->logicalDevice, depthImage, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, depthImageMemory, nullptr);
 
-    vkDestroyImageView(logicalDevice, colorImageView, nullptr);
-    vkDestroyImage(logicalDevice, colorImage, nullptr);
-    vkFreeMemory(logicalDevice, colorImageMemory, nullptr);
+    vkDestroyImageView(gfxCtx->logicalDevice, colorImageView, nullptr);
+    vkDestroyImage(gfxCtx->logicalDevice, colorImage, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, colorImageMemory, nullptr);
 
     for (VkFramebuffer framebuffer : swapchainFramebuffers)
     {
-        vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
+        vkDestroyFramebuffer(gfxCtx->logicalDevice, framebuffer, nullptr);
     }
     for (VkImageView imageView : swapChainImageViews)
     {
-        vkDestroyImageView(logicalDevice, imageView, nullptr);
+        vkDestroyImageView(gfxCtx->logicalDevice, imageView, nullptr);
     }
-    vkDestroySwapchainKHR(logicalDevice, swapChain, nullptr);
+    vkDestroySwapchainKHR(gfxCtx->logicalDevice, swapChain, nullptr);
 }
 
 void HelloTriangleApp::CleanupBuffers()
 {
-    vkDestroyBuffer(logicalDevice, vertexBuffer, nullptr);
-    vkFreeMemory(logicalDevice, vertexBufferMemory, nullptr);
-    vkDestroyBuffer(logicalDevice, indexBuffer, nullptr);
-    vkFreeMemory(logicalDevice, indexBufferMemory, nullptr);
+    vkDestroyBuffer(gfxCtx->logicalDevice, vertexBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, vertexBufferMemory, nullptr);
+    vkDestroyBuffer(gfxCtx->logicalDevice, indexBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, indexBufferMemory, nullptr);
 
     for (int i = 0; i < shaderStorageBuffers.size(); i++)
     {
-        vkDestroyBuffer(logicalDevice, shaderStorageBuffers[i], nullptr);
+        vkDestroyBuffer(gfxCtx->logicalDevice, shaderStorageBuffers[i], nullptr);
     }
     for (int i = 0; i < shaderStorageBuffersMemory.size(); i++)
     {
-        vkFreeMemory(logicalDevice, shaderStorageBuffersMemory[i], nullptr);
+        vkFreeMemory(gfxCtx->logicalDevice, shaderStorageBuffersMemory[i], nullptr);
     }
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) 
     {
-        vkDestroyBuffer(logicalDevice, uniformBuffers[i], nullptr);
-        vkFreeMemory(logicalDevice, uniformBuffersMemory[i], nullptr);
+        vkDestroyBuffer(gfxCtx->logicalDevice, uniformBuffers[i], nullptr);
+        vkFreeMemory(gfxCtx->logicalDevice, uniformBuffersMemory[i], nullptr);
     }
 }
 
@@ -2026,35 +1965,35 @@ void HelloTriangleApp::Cleanup()
 {
     CleanupSwapChain();
 
-    vkDestroySampler(logicalDevice, textureSampler, nullptr);
-    vkDestroyImageView(logicalDevice, textureImageView, nullptr);
-    vkDestroyImage(logicalDevice, textureImage, nullptr);
-    vkFreeMemory(logicalDevice, textureImageMemory, nullptr);
+    vkDestroySampler(gfxCtx->logicalDevice, textureSampler, nullptr);
+    vkDestroyImageView(gfxCtx->logicalDevice, textureImageView, nullptr);
+    vkDestroyImage(gfxCtx->logicalDevice, textureImage, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, textureImageMemory, nullptr);
 
     CleanupBuffers();
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) 
     {
-        vkDestroySemaphore(logicalDevice, imageAvailableSemaphores[i], nullptr);
-        vkDestroySemaphore(logicalDevice, renderFinishedSemaphores[i], nullptr);
-        vkDestroyFence(logicalDevice, inFlightFences[i], nullptr);
+        vkDestroySemaphore(gfxCtx->logicalDevice, imageAvailableSemaphores[i], nullptr);
+        vkDestroySemaphore(gfxCtx->logicalDevice, renderFinishedSemaphores[i], nullptr);
+        vkDestroyFence(gfxCtx->logicalDevice, inFlightFences[i], nullptr);
     }
     
-    vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
-    vkDestroyDescriptorPool(logicalDevice, descriptorPool, nullptr);
-    vkDestroyDescriptorSetLayout(logicalDevice, descriptorSetLayout, nullptr);
-    vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
-    vkDestroyPipeline(logicalDevice, brdfPipeline, nullptr);
-    vkDestroyPipelineLayout(logicalDevice, graphicsPipelineLayout, nullptr);
-    vkDestroyPipelineLayout(logicalDevice, brdfPipelineLayout, nullptr);
-    vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
+    vkDestroyCommandPool(gfxCtx->logicalDevice, gfxCtx->commandPool, nullptr);
+    vkDestroyDescriptorPool(gfxCtx->logicalDevice, descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, descriptorSetLayout, nullptr);
+    vkDestroyPipeline(gfxCtx->logicalDevice, graphicsPipeline, nullptr);
+    vkDestroyPipeline(gfxCtx->logicalDevice, brdfPipeline, nullptr);
+    vkDestroyPipelineLayout(gfxCtx->logicalDevice, graphicsPipelineLayout, nullptr);
+    vkDestroyPipelineLayout(gfxCtx->logicalDevice, brdfPipelineLayout, nullptr);
+    vkDestroyRenderPass(gfxCtx->logicalDevice, renderPass, nullptr);
 
-    vkDestroyCommandPool(logicalDevice, computeCommandPool, nullptr);
-    vkDestroyDescriptorPool(logicalDevice, computeDescriptorPool, nullptr);
-    vkDestroyDescriptorSetLayout(logicalDevice, computeDescriptorSetLayout, nullptr);
-    vkDestroyPipeline(logicalDevice, computePipeline, nullptr);
-    vkDestroyPipelineLayout(logicalDevice, computePipelineLayout, nullptr);
+    vkDestroyCommandPool(gfxCtx->logicalDevice, computeCommandPool, nullptr);
+    vkDestroyDescriptorPool(gfxCtx->logicalDevice, computeDescriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, computeDescriptorSetLayout, nullptr);
+    vkDestroyPipeline(gfxCtx->logicalDevice, computePipeline, nullptr);
+    vkDestroyPipelineLayout(gfxCtx->logicalDevice, computePipelineLayout, nullptr);
 
-    vkDestroyDevice(logicalDevice, nullptr);
+    vkDestroyDevice(gfxCtx->logicalDevice, nullptr);
     if (enableValidationLayers) 
     {
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);

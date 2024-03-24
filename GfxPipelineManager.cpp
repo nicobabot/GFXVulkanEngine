@@ -1,12 +1,59 @@
 #include "GfxPipelineManager.h"
 #include "gfxMaths.h"
+#include "GfxContext.h"
 
-void GfxPipelineManager::Init(VkDevice logicalDevice)
+VkCommandBuffer BeginSingleTimeCommandBuffer_Internal()
 {
-    this->logicalDevice = logicalDevice;
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    //TODO: Create a separate commandPool (VK_COMMAND_POOL_CREATE_TRANSIENT_BIT) for this short living buffers
+    allocInfo.commandPool = gfxCtx->commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(gfxCtx->logicalDevice, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo commandBufferBeginInfo{};
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+    return commandBuffer;
 }
 
-void GfxPipelineManager::CreateGraphicsPipeline(const GraphicsPipelineInfo& graphicPipelineInfo,
+void EndSingleTimeCommandBuffer_Internal(VkCommandBuffer commandBuffer)
+{
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.commandBufferCount = 1;
+    vkQueueSubmit(gfxCtx->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(gfxCtx->graphicsQueue);
+
+    vkFreeCommandBuffers(gfxCtx->logicalDevice, gfxCtx->commandPool, 1, &commandBuffer);
+}
+
+uint32_t FindMemoryType_Internal(uint32_t typeFilter, VkMemoryPropertyFlags memoryFlags)
+{
+    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties{};
+    vkGetPhysicalDeviceMemoryProperties(gfxCtx->physicalDevice, &physicalDeviceMemoryProperties);
+
+    for (int i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; ++i)
+    {
+        if (typeFilter & (1 << i) && memoryFlags &&
+            (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & memoryFlags) == memoryFlags)
+        {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("Error finding memory type");
+}
+
+void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
     VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline)
 
 {
@@ -127,7 +174,7 @@ void GfxPipelineManager::CreateGraphicsPipeline(const GraphicsPipelineInfo& grap
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-    if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, nullptr, &graphicPipelineLayout) != VK_SUCCESS)
+    if (vkCreatePipelineLayout(gfxCtx->logicalDevice, &pipelineLayoutCreateInfo, nullptr, &graphicPipelineLayout) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating pipeline layuout!");
     }
@@ -154,10 +201,55 @@ void GfxPipelineManager::CreateGraphicsPipeline(const GraphicsPipelineInfo& grap
     graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
     graphicsPipelineCreateInfo.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1,
+    if (vkCreateGraphicsPipelines(gfxCtx->logicalDevice, VK_NULL_HANDLE, 1,
         &graphicsPipelineCreateInfo, nullptr, &graphicPipeline) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating graphic pipeline!");
     }
 
+}
+
+void CreateBuffer_Internal(VkDeviceSize size, VkBufferUsageFlags usageFlags,
+    VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory)
+{
+    VkBufferCreateInfo createBuffer{};
+    createBuffer.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    createBuffer.size = size;
+    createBuffer.usage = usageFlags;
+    createBuffer.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(gfxCtx->logicalDevice, &createBuffer, nullptr, &newBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating vertex buffer!");
+    }
+
+    VkMemoryRequirements bufferMemoryRequirements;
+    vkGetBufferMemoryRequirements(gfxCtx->logicalDevice, newBuffer, &bufferMemoryRequirements);
+
+    //FindMemoryType
+    VkMemoryAllocateInfo allocateMemory{};
+    allocateMemory.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocateMemory.allocationSize = bufferMemoryRequirements.size;
+    allocateMemory.memoryTypeIndex = FindMemoryType_Internal(bufferMemoryRequirements.memoryTypeBits,
+        memoryFlags);
+
+    if (vkAllocateMemory(gfxCtx->logicalDevice, &allocateMemory, nullptr, &bufferMemory) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error allocating vertex buffer memory");
+    }
+
+    vkBindBufferMemory(gfxCtx->logicalDevice, newBuffer, bufferMemory, 0);
+}
+
+void CopyBuffer_Internal(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+{
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer_Internal();
+
+    VkBufferCopy copyRegion{};
+    copyRegion.srcOffset = 0;
+    copyRegion.dstOffset = 0;
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+    EndSingleTimeCommandBuffer_Internal(commandBuffer);
 }

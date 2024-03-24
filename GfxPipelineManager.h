@@ -1,6 +1,6 @@
-#pragma once
 #include <vulkan/vulkan_core.h>
 #include <vector>
+class GfxContext;
 
 struct GraphicsPipelineInfo 
 {
@@ -13,17 +13,18 @@ struct GraphicsPipelineInfo
 	GraphicsPipelineInfo() = default;
 };
 
-class GfxPipelineManager
-{
-	public:
+VkCommandBuffer BeginSingleTimeCommandBuffer_Internal();
 
-	void Init(VkDevice logicalDevice);
+void EndSingleTimeCommandBuffer_Internal(VkCommandBuffer commandBuffer);
 
-	void CreateGraphicsPipeline(const GraphicsPipelineInfo& graphicPipelineInfo,
-		VkPipelineLayout &graphicPipelineLayout, VkPipeline& graphicPipeline);
+uint32_t FindMemoryType_Internal(uint32_t typeFilter, VkMemoryPropertyFlags memoryFlags);
 
-	private:
-	VkDevice logicalDevice;
+void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
+	VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline);
 
-};
+void CreateBuffer_Internal(VkDeviceSize size, VkBufferUsageFlags usageFlags,
+	VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
 
+void CopyBuffer_Internal(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+extern GfxContext* gfxCtx;
