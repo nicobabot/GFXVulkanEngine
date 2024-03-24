@@ -5,6 +5,10 @@ class Vertex;
 
 class GfxObject
 {
+	public:
+
+	GfxObject(VkPipeline graphicsPipeline, VkDescriptorSetLayout descriptorSetLayout);
+
 	//Transform
 
 	//Rendering
@@ -14,7 +18,7 @@ class GfxObject
 
 	std::vector<uint32_t> indices;
 	VkBuffer indexBuffer;
-	VkDeviceMemory vertexIndexMemory;
+	VkDeviceMemory indexBufferMemory;
 
 	VkDescriptorSetLayout descriptorSetLayout;
 
