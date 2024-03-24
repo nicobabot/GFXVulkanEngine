@@ -1,5 +1,6 @@
 #include <vector>
-#include "GfxContext.h"
+#include <vulkan/vulkan_core.h>
+
 
 class Vertex;
 

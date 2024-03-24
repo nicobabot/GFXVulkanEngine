@@ -1,5 +1,5 @@
 #include "GfxObject.h"
-class GfxSphere : GfxObject
+class GfxSphere : public GfxObject
 {
 
 public:

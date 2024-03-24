@@ -1,6 +1,7 @@
 #include "GfxObject.h"
 #include "gfxMaths.h"
 #include "GfxPipelineManager.h"
+#include "GfxContext.h"
 
 
 GfxObject::GfxObject(VkPipeline graphicsPipeline, VkDescriptorSetLayout descriptorSetLayout)

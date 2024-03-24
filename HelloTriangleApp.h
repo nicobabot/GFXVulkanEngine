@@ -72,6 +72,8 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
+class GfxSphere;
+
 //TODO: Add/Create memory allocator
 //https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/
 
@@ -171,6 +173,8 @@ private:
     InputHandler inputHandler;
     ModelLoader modelLoader;
     //GfxPipelineManager pipelineManager;
+
+    GfxSphere* sphere;
 
 //Methods
 public:

@@ -2,6 +2,7 @@
 #include "MainDefines.h"
 #include "ComputeObjectsManager.h"
 #include "GfxContext.h"
+#include "GfxSphere.h"
 
 void HelloTriangleApp::Run()
 {
@@ -46,6 +47,7 @@ void HelloTriangleApp::InitVulkan()
     CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
     CreateCommandPool();
+    sphere = new GfxSphere(graphicsPipeline, descriptorSetLayout);
     CreateColorResources();
     CreateDepthResources();
     CreateFramebuffers();
@@ -1712,7 +1714,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline );
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sphere->graphicsPipeline/*graphicsPipeline*/ );
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -1728,16 +1730,16 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     scissor.offset = {0, 0};
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    VkBuffer vertexBuffers[] = {vertexBuffer};
+    VkBuffer vertexBuffers[] = { sphere->vertexBuffer};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(commandBuffer, sphere->indexBuffer/*indexBuffer*/, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
         graphicsPipelineLayout , 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(modelLoader.indices.size()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(sphere->indices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 
