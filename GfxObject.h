@@ -8,7 +8,10 @@ class GfxObject
 {
 	public:
 
-	GfxObject(VkPipeline graphicsPipeline, VkDescriptorSetLayout descriptorSetLayout);
+	GfxObject(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout);
+
+	void SetDescriptorSetAndLayout(std::vector<VkDescriptorSet> descriptorSet, 
+		VkDescriptorSetLayout descriptorSetLayout);
 
 	//Transform
 
@@ -21,6 +24,7 @@ class GfxObject
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
+	std::vector<VkDescriptorSet> descriptorSet;
 	VkDescriptorSetLayout descriptorSetLayout;
 
 	VkPipelineLayout graphicsPipelineLayout;

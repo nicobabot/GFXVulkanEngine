@@ -47,7 +47,6 @@ void HelloTriangleApp::InitVulkan()
     CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
     CreateCommandPool();
-    sphere = new GfxSphere(graphicsPipeline, descriptorSetLayout);
     CreateColorResources();
     CreateDepthResources();
     CreateFramebuffers();
@@ -55,6 +54,7 @@ void HelloTriangleApp::InitVulkan()
     CreateTextureImageView();
     CreateTextureSampler();
     modelLoader.LoadModel();
+    sphere = new GfxSphere(graphicsPipeline, graphicsPipelineLayout);
     CreateVertexBuffers();
     CreateIndexBuffers();
     CreateUniformBuffers();
@@ -63,6 +63,7 @@ void HelloTriangleApp::InitVulkan()
     CreateDescriptorSets();
     CreateCommandBuffers();
     CreateSyncObjects();
+    sphere->SetDescriptorSetAndLayout(descriptorSets,descriptorSetLayout);
     inputHandler.Init();
 }
 
@@ -740,7 +741,7 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     descriptorSetCreateInfo.pBindings = bindings.data();
 
     if (vkCreateDescriptorSetLayout(gfxCtx->logicalDevice, &descriptorSetCreateInfo,
-        nullptr, &descriptorSetLayout) != VK_SUCCESS) 
+        nullptr, &descriptorSetLayout) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating descriptor set layout!");
     }
@@ -922,12 +923,14 @@ void HelloTriangleApp::CreateCommandPool()
         throw std::runtime_error("Error creating command pool!");
     }
 
+#if COMPUTE_FEATURE
     commandoPoolCreateInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
 
     if (vkCreateCommandPool(gfxCtx->logicalDevice, &commandoPoolCreateInfo, nullptr, &computeCommandPool) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating compute command pool!");
     }
+#endif//#if COMPUTE_FEATURE
 }
 
 VkFormat HelloTriangleApp::FindSupportedFormat(std::vector<VkFormat> candidates, 
@@ -1345,7 +1348,7 @@ void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageF
 
 void HelloTriangleApp::CreateVertexBuffers()
 {
-    std::vector<Vertex> modelVertices = modelLoader.vertices;
+    std::vector<Vertex> modelVertices = sphere->vertices;
     VkDeviceSize bufferSize = sizeof(modelVertices[0]) * modelVertices.size();
 
     VkBuffer stagingBuffer;
@@ -1360,16 +1363,17 @@ void HelloTriangleApp::CreateVertexBuffers()
     vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
     CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,vertexBuffer, vertexBufferMemory);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sphere->vertexBuffer, sphere->vertexBufferMemory);
 
-    CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);    
+
+    CopyBuffer(stagingBuffer, sphere->vertexBuffer, bufferSize);
     vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
     vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
 }
 
 void HelloTriangleApp::CreateIndexBuffers()
 {
-    std::vector<uint32_t> modelIndices = modelLoader.indices; 
+    std::vector<uint32_t> modelIndices = sphere->indices; 
     VkDeviceSize bufferSize = sizeof(modelIndices[0]) * modelIndices.size();
 
     VkBuffer stagingBuffer;
@@ -1384,9 +1388,9 @@ void HelloTriangleApp::CreateIndexBuffers()
     vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
     CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sphere->indexBuffer, sphere->indexBufferMemory);
 
-    CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
+    CopyBuffer(stagingBuffer, sphere->indexBuffer, bufferSize);
     vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
     vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
 }
@@ -1613,7 +1617,6 @@ void HelloTriangleApp::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDevi
 void HelloTriangleApp::CreateCommandBuffers()
 {   
     commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    computeCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
     commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1625,7 +1628,8 @@ void HelloTriangleApp::CreateCommandBuffers()
     {
         throw std::runtime_error("Error creating command buffer!");
     }
-
+#if COMPUTE_FEATURE
+    computeCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     commandBufferAllocateInfo.commandPool = computeCommandPool;
     commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1635,6 +1639,7 @@ void HelloTriangleApp::CreateCommandBuffers()
     {
         throw std::runtime_error("Error creating command buffer!");
     }
+#endif//#if COMPUTE_FEATURE
 }
 
 void HelloTriangleApp::CreateSyncObjects()
@@ -1714,7 +1719,8 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sphere->graphicsPipeline/*graphicsPipeline*/ );
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+        sphere->graphicsPipeline );
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -1734,10 +1740,10 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, sphere->indexBuffer/*indexBuffer*/, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(commandBuffer, sphere->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        graphicsPipelineLayout , 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+        sphere->graphicsPipelineLayout , 0, 1, &sphere->descriptorSet[currentFrame], 0, nullptr);
 
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(sphere->indices.size()), 1, 0, 0, 0);
 
@@ -1942,10 +1948,10 @@ void HelloTriangleApp::CleanupSwapChain()
 
 void HelloTriangleApp::CleanupBuffers()
 {
-    vkDestroyBuffer(gfxCtx->logicalDevice, vertexBuffer, nullptr);
-    vkFreeMemory(gfxCtx->logicalDevice, vertexBufferMemory, nullptr);
-    vkDestroyBuffer(gfxCtx->logicalDevice, indexBuffer, nullptr);
-    vkFreeMemory(gfxCtx->logicalDevice, indexBufferMemory, nullptr);
+    vkDestroyBuffer(gfxCtx->logicalDevice, sphere->vertexBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, sphere->vertexBufferMemory, nullptr);
+    vkDestroyBuffer(gfxCtx->logicalDevice, sphere->indexBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, sphere->indexBufferMemory, nullptr);
 
     for (int i = 0; i < shaderStorageBuffers.size(); i++)
     {
@@ -1989,11 +1995,13 @@ void HelloTriangleApp::Cleanup()
     vkDestroyPipelineLayout(gfxCtx->logicalDevice, brdfPipelineLayout, nullptr);
     vkDestroyRenderPass(gfxCtx->logicalDevice, renderPass, nullptr);
 
+#if COMPUTE_FEATURE
     vkDestroyCommandPool(gfxCtx->logicalDevice, computeCommandPool, nullptr);
     vkDestroyDescriptorPool(gfxCtx->logicalDevice, computeDescriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, computeDescriptorSetLayout, nullptr);
     vkDestroyPipeline(gfxCtx->logicalDevice, computePipeline, nullptr);
     vkDestroyPipelineLayout(gfxCtx->logicalDevice, computePipelineLayout, nullptr);
+#endif//#if COMPUTE_FEATURE
 
     vkDestroyDevice(gfxCtx->logicalDevice, nullptr);
     if (enableValidationLayers) 

@@ -47,8 +47,8 @@ void GfxSphere::GenerateSphereVertices_Internal(uint32_t numRings, uint32_t numS
 	}
 }
 
-GfxSphere::GfxSphere(VkPipeline graphicsPipeline, VkDescriptorSetLayout descriptorSetLayout) 
-	: GfxObject(graphicsPipeline, descriptorSetLayout)
+GfxSphere::GfxSphere(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout) :
+	GfxObject(graphicsPipeline, graphicsPipelineLayout)
 {
 	GenerateSphereVertices_Internal(20, 20, 1.0f, vertices, indices);
 

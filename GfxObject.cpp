@@ -4,9 +4,16 @@
 #include "GfxContext.h"
 
 
-GfxObject::GfxObject(VkPipeline graphicsPipeline, VkDescriptorSetLayout descriptorSetLayout)
-    :graphicsPipeline(graphicsPipeline), descriptorSetLayout(descriptorSetLayout)
+GfxObject::GfxObject(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout)
+    :graphicsPipeline(graphicsPipeline), graphicsPipelineLayout(graphicsPipelineLayout)
 {
+}
+
+void GfxObject::SetDescriptorSetAndLayout(std::vector<VkDescriptorSet> descriptorSet,
+VkDescriptorSetLayout descriptorSetLayout)
+{
+    this->descriptorSet = descriptorSet;
+    this->descriptorSetLayout = descriptorSetLayout;
 }
 
 void GfxObject::CreateVertexBuffer()

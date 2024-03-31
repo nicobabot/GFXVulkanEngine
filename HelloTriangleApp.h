@@ -142,10 +142,10 @@ private:
     VkDeviceMemory stagingBufferMemory;
 
     //Vertex & index buffer
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
+    //VkBuffer vertexBuffer;
+    //VkDeviceMemory vertexBufferMemory;
+    //VkBuffer indexBuffer;
+    //VkDeviceMemory indexBufferMemory;
 
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
