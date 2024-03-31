@@ -72,7 +72,7 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-class GfxSphere;
+class GfxObject;
 
 //TODO: Add/Create memory allocator
 //https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/
@@ -174,7 +174,8 @@ private:
     ModelLoader modelLoader;
     //GfxPipelineManager pipelineManager;
 
-    GfxSphere* sphere;
+    //GfxSphere* sphere;
+    std::vector<GfxObject*> objects;
 
 //Methods
 public:
@@ -231,6 +232,7 @@ private:
     void GenerateMipmaps(VkImage image, VkFormat format, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels );
     void CreateTextureImageView();
     void CreateTextureSampler();
+    void PopulateObjects();
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
     void CreateVertexBuffers();
@@ -240,6 +242,7 @@ private:
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void CreateCommandBuffers();
     void CreateSyncObjects();
+    void SetDescriptorsToObjects();
     void RecordComputeCommandBuffer(VkCommandBuffer commandBuffer);
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryFlags);

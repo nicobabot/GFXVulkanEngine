@@ -54,7 +54,7 @@ void HelloTriangleApp::InitVulkan()
     CreateTextureImageView();
     CreateTextureSampler();
     modelLoader.LoadModel();
-    sphere = new GfxSphere(graphicsPipeline, graphicsPipelineLayout);
+    PopulateObjects();
     CreateVertexBuffers();
     CreateIndexBuffers();
     CreateUniformBuffers();
@@ -63,7 +63,7 @@ void HelloTriangleApp::InitVulkan()
     CreateDescriptorSets();
     CreateCommandBuffers();
     CreateSyncObjects();
-    sphere->SetDescriptorSetAndLayout(descriptorSets,descriptorSetLayout);
+    SetDescriptorsToObjects();
     inputHandler.Init();
 }
 
@@ -1340,6 +1340,11 @@ void HelloTriangleApp::CreateTextureSampler()
 
 }
 
+void HelloTriangleApp::PopulateObjects()
+{
+    objects.push_back(new GfxSphere(graphicsPipeline, graphicsPipelineLayout));
+}
+
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
     VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory)
 {
@@ -1348,51 +1353,57 @@ void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageF
 
 void HelloTriangleApp::CreateVertexBuffers()
 {
-    std::vector<Vertex> modelVertices = sphere->vertices;
-    VkDeviceSize bufferSize = sizeof(modelVertices[0]) * modelVertices.size();
+    for(GfxObject* object : objects)
+    {
+        std::vector<Vertex> modelVertices = object->vertices;
+        VkDeviceSize bufferSize = sizeof(modelVertices[0]) * modelVertices.size();
 
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-        stagingBuffer, stagingBufferMemory);
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+            stagingBuffer, stagingBufferMemory);
 
-    void* data;
-    vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0,  &data);
-    memcpy(data, modelVertices.data(), (size_t)bufferSize);
-    vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
+        void* data;
+        vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0,  &data);
+        memcpy(data, modelVertices.data(), (size_t)bufferSize);
+        vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
-    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sphere->vertexBuffer, sphere->vertexBufferMemory);
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, object->vertexBuffer, object->vertexBufferMemory);
 
 
-    CopyBuffer(stagingBuffer, sphere->vertexBuffer, bufferSize);
-    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
-    vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
+        CopyBuffer(stagingBuffer, object->vertexBuffer, bufferSize);
+        vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
+        vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
+    }
 }
 
 void HelloTriangleApp::CreateIndexBuffers()
 {
-    std::vector<uint32_t> modelIndices = sphere->indices; 
-    VkDeviceSize bufferSize = sizeof(modelIndices[0]) * modelIndices.size();
+    for (GfxObject* object : objects)
+    {
+        std::vector<uint32_t> modelIndices = object->indices;
+        VkDeviceSize bufferSize = sizeof(modelIndices[0]) * modelIndices.size();
 
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer, stagingBufferMemory);
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory);
     
-    void*data;
-    vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, modelIndices.data(), bufferSize);
-    vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
+        void*data;
+        vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, modelIndices.data(), bufferSize);
+        vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
-    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sphere->indexBuffer, sphere->indexBufferMemory);
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, object->indexBuffer, object->indexBufferMemory);
 
-    CopyBuffer(stagingBuffer, sphere->indexBuffer, bufferSize);
-    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
-    vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
+        CopyBuffer(stagingBuffer, object->indexBuffer, bufferSize);
+        vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
+        vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
+    }
 }
 
 void HelloTriangleApp::CreateUniformBuffers()
@@ -1665,6 +1676,14 @@ void HelloTriangleApp::CreateSyncObjects()
     }
 }
 
+void HelloTriangleApp::SetDescriptorsToObjects()
+{
+    for(GfxObject* object : objects)
+    {
+        object->SetDescriptorSetAndLayout(descriptorSets, descriptorSetLayout);
+    }
+}
+
 void HelloTriangleApp::RecordComputeCommandBuffer(VkCommandBuffer commandBuffer)
 {
 #if COMPUTE_FEATURE
@@ -1719,33 +1738,36 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-        sphere->graphicsPipeline );
+    for(GfxObject* object : objects)
+    {
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            object->graphicsPipeline );
 
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(swapChainExtent.width);
-    viewport.height = static_cast<float>(swapChainExtent.height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(swapChainExtent.width);
+        viewport.height = static_cast<float>(swapChainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-    VkRect2D scissor{};
-    scissor.extent = swapChainExtent;
-    scissor.offset = {0, 0};
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+        VkRect2D scissor{};
+        scissor.extent = swapChainExtent;
+        scissor.offset = {0, 0};
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    VkBuffer vertexBuffers[] = { sphere->vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        VkBuffer vertexBuffers[] = { object->vertexBuffer};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, sphere->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(commandBuffer, object->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        sphere->graphicsPipelineLayout , 0, 1, &sphere->descriptorSet[currentFrame], 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            object->graphicsPipelineLayout , 0, 1, &object->descriptorSet[currentFrame], 0, nullptr);
 
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(sphere->indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(object->indices.size()), 1, 0, 0, 0);
+    }
 
     vkCmdEndRenderPass(commandBuffer);
 
@@ -1948,10 +1970,13 @@ void HelloTriangleApp::CleanupSwapChain()
 
 void HelloTriangleApp::CleanupBuffers()
 {
-    vkDestroyBuffer(gfxCtx->logicalDevice, sphere->vertexBuffer, nullptr);
-    vkFreeMemory(gfxCtx->logicalDevice, sphere->vertexBufferMemory, nullptr);
-    vkDestroyBuffer(gfxCtx->logicalDevice, sphere->indexBuffer, nullptr);
-    vkFreeMemory(gfxCtx->logicalDevice, sphere->indexBufferMemory, nullptr);
+    for(GfxObject* object : objects)
+    {
+        vkDestroyBuffer(gfxCtx->logicalDevice, object->vertexBuffer, nullptr);
+        vkFreeMemory(gfxCtx->logicalDevice, object->vertexBufferMemory, nullptr);
+        vkDestroyBuffer(gfxCtx->logicalDevice, object->indexBuffer, nullptr);
+        vkFreeMemory(gfxCtx->logicalDevice, object->indexBufferMemory, nullptr);
+    }
 
     for (int i = 0; i < shaderStorageBuffers.size(); i++)
     {
