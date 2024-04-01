@@ -91,7 +91,7 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
     //G - Geomatry shadowing/maksing
     //F - Fresnel, highlight when gazing angles
 
-    float3 n = input.normal;
+    float3 n = normalize(input.normal);
     float3 v = normalize(input.viewPos - input.fragPos);
     float3 h = normalize( v + l );
     float roughness = 0.2f;
