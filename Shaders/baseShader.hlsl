@@ -116,7 +116,7 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
 
     //return float4(dBRDF,1.0f);
     //return float4(dBRDF,1.0f) * NoL;
-    return (float4(dBRDF,1.0f) + float4(sBRDF,1.0f)) * NoL;
+    return float4((dBRDF + sBRDF) * NoL, 1.0f);
 }
 
 float4 PSMain(PSInput input) : SV_TARGET

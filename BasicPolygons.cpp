@@ -25,7 +25,7 @@ void GfxSphere::GenerateSphereVertices_Internal(uint32_t numRings, uint32_t numS
 			float u = static_cast<float>(segment) / static_cast<float>(numSegments);
 			float v = static_cast<float>(ring) / static_cast<float>(numRings);
 
-			vertices.push_back({ {x, y, z},	WHITE, {u, v}	, {nx, ny, nz} });
+			vertices.push_back({ {x, -y, z},WHITE, {u, v}, {nx, -ny, nz} });
 		}
 	}
 
