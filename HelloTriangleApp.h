@@ -15,6 +15,8 @@
 
 #include "ModelLoader.h"
 #include "GfxPipelineManager.h";
+void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
+    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline);
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
@@ -70,6 +72,8 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
+class GfxObject;
+
 //TODO: Add/Create memory allocator
 //https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/
 
@@ -80,9 +84,9 @@ private:
     GLFWwindow *window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkDevice logicalDevice;
-    VkQueue graphicsQueue;
+    //VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    //VkDevice gfxCtx->logicalDevice;
+    //VkQueue graphicsQueue;
     VkQueue presentationQueue;
     VkQueue computeQueue;
     VkSurfaceKHR surface;
@@ -107,7 +111,7 @@ private:
     VkPipeline computePipeline;
     std::vector<VkFramebuffer> swapchainFramebuffers;
 
-    VkCommandPool commandPool;
+    //VkCommandPool commandPool;
     VkCommandPool computeCommandPool;
 
     //Depth
@@ -138,10 +142,10 @@ private:
     VkDeviceMemory stagingBufferMemory;
 
     //Vertex & index buffer
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
+    //VkBuffer vertexBuffer;
+    //VkDeviceMemory vertexBufferMemory;
+    //VkBuffer indexBuffer;
+    //VkDeviceMemory indexBufferMemory;
 
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
@@ -168,7 +172,10 @@ private:
 
     InputHandler inputHandler;
     ModelLoader modelLoader;
-    GfxPipelineManager pipelineManager;
+    //GfxPipelineManager pipelineManager;
+
+    //GfxSphere* sphere;
+    std::vector<GfxObject*> objects;
 
 //Methods
 public:
@@ -225,6 +232,7 @@ private:
     void GenerateMipmaps(VkImage image, VkFormat format, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels );
     void CreateTextureImageView();
     void CreateTextureSampler();
+    void PopulateObjects();
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
     void CreateVertexBuffers();
@@ -234,6 +242,7 @@ private:
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void CreateCommandBuffers();
     void CreateSyncObjects();
+    void SetDescriptorsToObjects();
     void RecordComputeCommandBuffer(VkCommandBuffer commandBuffer);
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryFlags);
