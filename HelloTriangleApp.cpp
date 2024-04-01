@@ -2,7 +2,7 @@
 #include "MainDefines.h"
 #include "ComputeObjectsManager.h"
 #include "GfxContext.h"
-#include "GfxSphere.h"
+#include "BasicPolygons.h"
 
 void HelloTriangleApp::Run()
 {
@@ -1342,6 +1342,7 @@ void HelloTriangleApp::CreateTextureSampler()
 
 void HelloTriangleApp::PopulateObjects()
 {
+    objects.push_back(new GfxCube(graphicsPipeline, graphicsPipelineLayout));
     objects.push_back(new GfxSphere(graphicsPipeline, graphicsPipelineLayout));
 }
 

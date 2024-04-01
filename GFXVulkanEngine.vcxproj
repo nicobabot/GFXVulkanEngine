@@ -149,22 +149,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BasicPolygons.cpp" />
     <ClCompile Include="GfxContext.cpp" />
     <ClCompile Include="GfxObject.cpp" />
     <ClCompile Include="GfxPipelineManager.cpp" />
-    <ClCompile Include="GfxSphere.cpp" />
     <ClCompile Include="HelloTriangleApp.cpp" />
     <ClCompile Include="InputHandler.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BasicPolygons.h" />
     <ClInclude Include="ColorsDef.h" />
     <ClInclude Include="GfxContext.h" />
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="GfxObject.h" />
     <ClInclude Include="GfxPipelineManager.h" />
-    <ClInclude Include="GfxSphere.h" />
     <ClInclude Include="HelloTriangleApp.h" />
     <ClInclude Include="InputHandler.h" />
     <ClInclude Include="MainDefines.h" />
