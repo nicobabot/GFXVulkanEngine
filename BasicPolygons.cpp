@@ -93,6 +93,13 @@ GfxCube::GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineL
 		{{0.5,-0.5,0.5},	YELLOW, {0.0f, 1.0f} , {0.0,0.0,1.0}},
 	};
 
+	glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-2, 0, 0));
+
+	for (int i = 0; i<vertices.size(); ++i) 
+	{
+		vertices[i].position = translationMatrix * glm::vec4(vertices[i].position,1);
+	}
+
 	indices =
 	{
 		0,1,2,2,3,0,
