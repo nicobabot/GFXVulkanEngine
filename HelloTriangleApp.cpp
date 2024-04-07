@@ -55,8 +55,6 @@ void HelloTriangleApp::InitVulkan()
     CreateTextureSampler();
     modelLoader.LoadModel();
     PopulateObjects();
-    CreateVertexBuffers();
-    CreateIndexBuffers();
     CreateUniformBuffers();
     CreateShaderStorageBuffers();
     CreateDescriptorPool();
@@ -1352,61 +1350,6 @@ void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageF
     CreateBuffer_Internal(size, usageFlags, memoryFlags, newBuffer, bufferMemory);
 }
 
-void HelloTriangleApp::CreateVertexBuffers()
-{
-    for(GfxObject* object : objects)
-    {
-        std::vector<Vertex> modelVertices = object->vertices;
-        VkDeviceSize bufferSize = sizeof(modelVertices[0]) * modelVertices.size();
-
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-            stagingBuffer, stagingBufferMemory);
-
-        void* data;
-        vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0,  &data);
-        memcpy(data, modelVertices.data(), (size_t)bufferSize);
-        vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
-
-        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, object->vertexBuffer, object->vertexBufferMemory);
-
-
-        CopyBuffer(stagingBuffer, object->vertexBuffer, bufferSize);
-        vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
-        vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
-    }
-}
-
-void HelloTriangleApp::CreateIndexBuffers()
-{
-    for (GfxObject* object : objects)
-    {
-        std::vector<uint32_t> modelIndices = object->indices;
-        VkDeviceSize bufferSize = sizeof(modelIndices[0]) * modelIndices.size();
-
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            stagingBuffer, stagingBufferMemory);
-    
-        void*data;
-        vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, modelIndices.data(), bufferSize);
-        vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
-
-        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, object->indexBuffer, object->indexBufferMemory);
-
-        CopyBuffer(stagingBuffer, object->indexBuffer, bufferSize);
-        vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
-        vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
-    }
-}
-
 void HelloTriangleApp::CreateUniformBuffers()
 {
     VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -2016,9 +1959,9 @@ void HelloTriangleApp::Cleanup()
     vkDestroyDescriptorPool(gfxCtx->logicalDevice, descriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, descriptorSetLayout, nullptr);
     vkDestroyPipeline(gfxCtx->logicalDevice, graphicsPipeline, nullptr);
-    vkDestroyPipeline(gfxCtx->logicalDevice, brdfPipeline, nullptr);
+    //vkDestroyPipeline(gfxCtx->logicalDevice, brdfPipeline, nullptr);
     vkDestroyPipelineLayout(gfxCtx->logicalDevice, graphicsPipelineLayout, nullptr);
-    vkDestroyPipelineLayout(gfxCtx->logicalDevice, brdfPipelineLayout, nullptr);
+    //vkDestroyPipelineLayout(gfxCtx->logicalDevice, brdfPipelineLayout, nullptr);
     vkDestroyRenderPass(gfxCtx->logicalDevice, renderPass, nullptr);
 
 #if COMPUTE_FEATURE

@@ -109,4 +109,7 @@ GfxCube::GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineL
 		16,17,18,18,19,16,
 		20,21,22,22,23,20,
 	};
+
+	CreateVertexBuffer();
+	CreateIndexBuffer();
 }

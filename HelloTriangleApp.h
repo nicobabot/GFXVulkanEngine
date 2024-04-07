@@ -137,16 +137,6 @@ private:
     //TODO: store vertex + index in the same buffer for memory aliasing
     //https://developer.nvidia.com/vulkan-memory-management 
 
-    //Transfer staging buffer
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-
-    //Vertex & index buffer
-    //VkBuffer vertexBuffer;
-    //VkDeviceMemory vertexBufferMemory;
-    //VkBuffer indexBuffer;
-    //VkDeviceMemory indexBufferMemory;
-
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
@@ -235,8 +225,6 @@ private:
     void PopulateObjects();
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
-    void CreateVertexBuffers();
-    void CreateIndexBuffers();
     void CreateUniformBuffers();
     void CreateShaderStorageBuffers();
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
