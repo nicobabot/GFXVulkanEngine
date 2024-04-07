@@ -16,3 +16,8 @@ public:
 	GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout);
 };
 
+class GfxPlane : public GfxObject
+{
+public:
+	GfxPlane(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout);
+};

@@ -1342,6 +1342,7 @@ void HelloTriangleApp::PopulateObjects()
 {
     objects.push_back(new GfxCube(graphicsPipeline, graphicsPipelineLayout));
     objects.push_back(new GfxSphere(graphicsPipeline, graphicsPipelineLayout));
+    objects.push_back(new GfxPlane(graphicsPipeline, graphicsPipelineLayout));
 }
 
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 

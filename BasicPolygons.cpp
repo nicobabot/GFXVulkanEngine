@@ -113,3 +113,34 @@ GfxCube::GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineL
 	CreateVertexBuffer();
 	CreateIndexBuffer();
 }
+
+GfxPlane::GfxPlane(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout)
+	: GfxObject(graphicsPipeline, graphicsPipelineLayout)
+{
+	vertices =
+	{
+		{{0.5,0.5,-0.5},	RED, {1.0f, 1.0f} , {0.0,1.0,0.0}},
+		{{-0.5,0.5,-0.5},	RED, {1.0f, 0.0f} , {0.0,1.0,0.0}},
+		{{-0.5,0.5,0.5},	RED, {0.0f, 0.0f} , {0.0,1.0,0.0}},
+		{{0.5,0.5,0.5},		RED, {0.0f, 1.0f} , {0.0,1.0,0.0}},
+	};
+
+
+	glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0, -3, 0));
+	glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(100, 0, 100));
+
+	glm::mat4 transSacaleMat = translationMatrix * scaleMatrix;
+
+	for (int i = 0; i < vertices.size(); ++i)
+	{
+		vertices[i].position = transSacaleMat * glm::vec4(vertices[i].position, 1);
+	}
+
+	indices =
+	{
+		0,1,2,2,3,0,
+	};
+
+	CreateVertexBuffer();
+	CreateIndexBuffer();
+}
