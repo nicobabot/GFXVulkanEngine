@@ -201,13 +201,22 @@ bool HelloTriangleApp::CheckValidationLayerSupport(std::vector<const char*> vali
     return true;
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+static VKAPI_ATTR VkBool32 VKAPI_CALL ValidationErrorLogger(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
     void* pUserData) {
 
-    std::cerr << "validation layer: " << pCallbackData->pMessage << "\n" << std::endl;
+    if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+    {
+        std::cerr << RED_TEXT << "validation layer: " << pCallbackData->pMessage << "\n" << std::endl;
+    }
+    else
+    {
+        std::cerr << YELLOW_TEXT << "validation layer: " << pCallbackData->pMessage << "\n" << std::endl;
+    }
+
+    std::cerr << RESET_TEXT << std::endl;
 
     return VK_FALSE;
 }
@@ -235,7 +244,7 @@ void HelloTriangleApp::PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCre
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
     createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo.pfnUserCallback = debugCallback;
+    createInfo.pfnUserCallback = ValidationErrorLogger;
 }
 
 VkResult HelloTriangleApp::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -727,12 +736,19 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
     samplerLayoutBinding.binding = 1;
     samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+    VkDescriptorSetLayoutBinding sampledImageLayoutBinding{};
+    sampledImageLayoutBinding.binding = 2;
+    sampledImageLayoutBinding.descriptorCount = 1;
+    sampledImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    sampledImageLayoutBinding.pImmutableSamplers = nullptr;
+    sampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
+    std::array<VkDescriptorSetLayoutBinding, 3> bindings = {uboLayoutBinding, 
+        samplerLayoutBinding, sampledImageLayoutBinding };
     VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
     descriptorSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -1405,11 +1421,13 @@ void HelloTriangleApp::CreateShaderStorageBuffers()
 
 void HelloTriangleApp::CreateDescriptorPool()
 {
-    std::array<VkDescriptorPoolSize, 2> descriptorPoolSize;
+    std::array<VkDescriptorPoolSize, 3> descriptorPoolSize;
     descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-    descriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
     descriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorPoolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    descriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1486,12 +1504,7 @@ void HelloTriangleApp::CreateDescriptorSets()
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageView = textureImageView;
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.sampler = textureSampler;
-
-        std::array<VkWriteDescriptorSet, 2> writeDescriptorSet{};
+        std::array<VkWriteDescriptorSet, 3> writeDescriptorSet{};
         writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSet[0].dstSet = descriptorSets[i];
         writeDescriptorSet[0].dstBinding = 0;
@@ -1500,13 +1513,31 @@ void HelloTriangleApp::CreateDescriptorSets()
         writeDescriptorSet[0].descriptorCount = 1;
         writeDescriptorSet[0].pBufferInfo = &bufferInfo;
 
+        VkDescriptorImageInfo samplerInfo{};
+        samplerInfo.sampler = textureSampler;
+        samplerInfo.imageView = nullptr;
+        samplerInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
         writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSet[1].dstSet = descriptorSets[i];
         writeDescriptorSet[1].dstBinding = 1;
         writeDescriptorSet[1].dstArrayElement = 0;
-        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
         writeDescriptorSet[1].descriptorCount = 1;
-        writeDescriptorSet[1].pImageInfo = &imageInfo;
+        writeDescriptorSet[1].pImageInfo = &samplerInfo;
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageView = textureImageView;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.sampler = nullptr;
+
+        writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[2].dstSet = descriptorSets[i];
+        writeDescriptorSet[2].dstBinding = 2;
+        writeDescriptorSet[2].dstArrayElement = 0;
+        writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[2].descriptorCount = 1;
+        writeDescriptorSet[2].pImageInfo = &imageInfo;
 
         vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
             writeDescriptorSet.data(), 0, nullptr);

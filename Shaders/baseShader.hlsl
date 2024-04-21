@@ -24,8 +24,8 @@ cbuffer MyConstantBuffer : register(b0)
    UniformBufferObject ubo;
 };
 
-Texture2D imageTexture : register(t1);
 SamplerState mySampler : register(s1);
+Texture2D imageTexture : register(t2);
 
 #include "brdf.hlsl"
 
