@@ -53,7 +53,7 @@ void GenerateSphereVertices(uint32_t numRings, uint32_t numSegments, float radiu
 	}
 }
 
-void ModelLoader::LoadModel()
+void GfxLoader::LoadModel()
 {
 	if (basicGeometry) 
 	{
@@ -108,12 +108,12 @@ void ModelLoader::LoadModel()
 	}
 }
 
-unsigned char* ModelLoader::LoadTexture(int* width, int* height, int* channels)
+unsigned char* GfxLoader::LoadTexture(int* width, int* height, int* channels)
 {
 	return stbi_load(TEXTURE_PATH.c_str(), width, height, channels, STBI_rgb_alpha);
 }
 
-void ModelLoader::FreeTextureArrayInfo(unsigned char* pixels)
+void GfxLoader::FreeTextureArrayInfo(unsigned char* pixels)
 {
 	stbi_image_free(pixels);
 }

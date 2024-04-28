@@ -6,7 +6,7 @@
 const std::string MODEL_PATH = "Models/viking_room.obj";
 const std::string TEXTURE_PATH = "Textures/viking_room.png";
 
-class ModelLoader
+class GfxLoader
 {
 public:
 	void LoadModel();

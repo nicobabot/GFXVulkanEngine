@@ -28,6 +28,7 @@ SamplerState mySampler : register(s1);
 Texture2D imageTexture : register(t2);
 
 #include "brdf.hlsl"
+#define SAMPLE_TEXTURE 0
 
 PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR, 
     float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
@@ -101,7 +102,10 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
     float NoH = saturate(dot(n, h));
     float LoH = saturate(dot(l, h));
 
-    float4 diffuseColor = imageTexture.Sample(mySampler, input.fragTexCoord.rg);
+    float4 diffuseColor = input.fragColor;
+#if( SAMPLE_TEXTURE )
+    diffuseColor = imageTexture.Sample(mySampler, input.fragTexCoord.rg);
+#endif //#if(SAMPLE_TEXTURE)
     float ambientColor = 1.0f;
 
     float specularStrength = 0.2f;
@@ -112,23 +116,12 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
     sBRDF *= specularStrength;
 
     float3 dBRDF = diffuseColor * Fd_Lambert();
-    //float3 dBRDF = diffuseColor * Fd_Burley(NoV, NoL, LoH, roughness);
 
-    //return float4(dBRDF,1.0f);
-    //return float4(dBRDF,1.0f) * NoL;
     return float4((dBRDF + sBRDF) * NoL, 1.0f);
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    //return float4(input.normal,1.0f);
-
-    //float3 lightPos = float3(2,5,-5);
-    //float3 lightDir = normalize(lightPos - input.fragPos);
-    //float3 lightPos = float3(0,3,0);
     float3 lightDir = float3(-0.32, -0.77, 0.56);
-    //float3 lightDir = normalize(input.fragPos.xyz - lightPos);
-    //return PhongIlumination(input, float4(lightDir,1.0f));
     return FilamentBrdfLight(input, -lightDir);
-    //return DirectionalLight(input.fragColor, input);
 }

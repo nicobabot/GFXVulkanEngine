@@ -84,9 +84,6 @@ private:
     GLFWwindow *window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
-    //VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    //VkDevice gfxCtx->logicalDevice;
-    //VkQueue graphicsQueue;
     VkQueue presentationQueue;
     VkQueue computeQueue;
     VkSurfaceKHR surface;
@@ -111,7 +108,6 @@ private:
     VkPipeline computePipeline;
     std::vector<VkFramebuffer> swapchainFramebuffers;
 
-    //VkCommandPool commandPool;
     VkCommandPool computeCommandPool;
 
     //Depth
@@ -161,10 +157,7 @@ private:
     bool framebufferResized = false;
 
     InputHandler inputHandler;
-    ModelLoader modelLoader;
-    //GfxPipelineManager pipelineManager;
-
-    //GfxSphere* sphere;
+    GfxLoader gfxLoader;
     std::vector<GfxObject*> objects;
 
 //Methods

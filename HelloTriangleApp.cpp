@@ -53,7 +53,7 @@ void HelloTriangleApp::InitVulkan()
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
-    modelLoader.LoadModel();
+    gfxLoader.LoadModel();
     PopulateObjects();
     CreateUniformBuffers();
     CreateShaderStorageBuffers();
@@ -1169,7 +1169,7 @@ void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mip
 void HelloTriangleApp::CreateTextureImage()
 {
     int texWidth, texHeight, texChannels;
-    unsigned char* pixels = modelLoader.LoadTexture(&texWidth, &texHeight, &texChannels);
+    unsigned char* pixels = gfxLoader.LoadTexture(&texWidth, &texHeight, &texChannels);
 
     /*
     -The max function selects the largest dimension. 
@@ -1196,7 +1196,7 @@ void HelloTriangleApp::CreateTextureImage()
     memcpy(data, pixels, static_cast<size_t>(imageSize));
     vkUnmapMemory(gfxCtx->logicalDevice, staginBufferMemory);
 
-    modelLoader.FreeTextureArrayInfo(pixels);
+    gfxLoader.FreeTextureArrayInfo(pixels);
 
     CreateImage(texWidth, texHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT,
         VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,

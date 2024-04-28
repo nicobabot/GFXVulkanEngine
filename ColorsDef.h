@@ -5,6 +5,7 @@
 #define YELLOW	glm::vec3(1.0f,1.0f,0.0f)
 #define CYAN	glm::vec3(0.0f,1.0f,1.0f)
 #define WHITE	glm::vec3(1.0f,1.0f,1.0f)
+#define GRAY	glm::vec3(0.5f,0.5f,0.5f)
 
 //Print console logs color
 #define RED_TEXT      "\033[1;31m"
