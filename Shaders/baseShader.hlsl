@@ -92,27 +92,6 @@ struct PointLight
     float quadraticK; 
 };  
 
-float4 GetSpotLightAttenuation(PSInput input, float4 pixelColor)
-{
-    PointLight p;
-    p.position = float3(0.0f, 0.0f, 1.5f);
-    p.constantK = 1.0f;
-    p.linearK = 0.22f;
-    p.quadraticK = 0.20f;  
-
-
-    float d = length(p.position - input.fragPos);
-    float3 l = normalize(p.position - input.fragPos);
-    float3 n = normalize(input.normal);
-
-    float NoL = saturate(dot(n, l));
-
-    float3 diffuse = input.fragColor * NoL;
-    float attenuation = (1 / (p.constantK + p.linearK * d + p.quadraticK * d * d));
-    float4 finalColor = float4(diffuse * attenuation,1.0f);
-    return pixelColor + finalColor;
-}
-
 float4 FilamentBrdfLight(PSInput input, float3 l)
 {
 
@@ -149,6 +128,45 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
 
     return float4((dBRDF + sBRDF) * NoL, 1.0f);
 }
+
+float4 GetSpotLightAttenuation(PSInput input, float4 pixelColor)
+{
+    PointLight p;
+    p.position = float3(0.0f, 0.0f, 1.5f);
+    p.constantK = 1.0f;
+    p.linearK = 0.22f;
+    p.quadraticK = 0.20f;  
+
+
+    float d = length(p.position - input.fragPos);
+    float3 l = normalize(p.position - input.fragPos);
+    float3 n = normalize(input.normal);
+
+    float3 v = normalize(input.viewPos - input.fragPos);
+    float3 h = normalize( v + l );
+    float roughness = 0.2f;
+
+    float NoL = saturate(dot(n, l));
+    float NoV = saturate(dot(n, v));
+    float NoH = saturate(dot(n, h));
+    float LoH = saturate(dot(l, h));
+
+    float4 diffuseColor = input.fragColor;
+    float ambientColor = 1.0f;
+    float attenuation = (1 / (p.constantK + p.linearK * d + p.quadraticK * d * d));
+
+    float specularStrength = 0.2f;
+    float D = D_GGX(NoH, roughness);
+    float3 F = F_Schlick_U(LoH, 0.0, 1.0);
+    float G = V_GGXCorrelated(NoV, NoL, roughness);
+    float3 sBRDF = (D * G); //* F ;
+    sBRDF *= specularStrength;
+
+    float3 dBRDF = diffuseColor * Fd_Lambert();
+    float4 finalColor = float4((dBRDF + sBRDF) * NoL, 1.0f);
+    return pixelColor + (finalColor * attenuation);
+}
+
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
