@@ -83,6 +83,36 @@ float4 PhongIlumination(PSInput input, float4 lightDir)
     return (diffuseColor + specularColor) * texColor;
 }
 
+
+struct PointLight 
+{    
+    float3 position; 
+    float constantK;
+    float linearK;
+    float quadraticK; 
+};  
+
+float4 GetSpotLightAttenuation(PSInput input, float4 pixelColor)
+{
+    PointLight p;
+    p.position = float3(0.0f, 0.0f, 1.5f);
+    p.constantK = 1.0f;
+    p.linearK = 0.22f;
+    p.quadraticK = 0.20f;  
+
+
+    float d = length(p.position - input.fragPos);
+    float3 l = normalize(p.position - input.fragPos);
+    float3 n = normalize(input.normal);
+
+    float NoL = saturate(dot(n, l));
+
+    float3 diffuse = input.fragColor * NoL;
+    float attenuation = (1 / (p.constantK + p.linearK * d + p.quadraticK * d * d));
+    float4 finalColor = float4(diffuse * attenuation,1.0f);
+    return pixelColor + finalColor;
+}
+
 float4 FilamentBrdfLight(PSInput input, float3 l)
 {
 
@@ -123,5 +153,7 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
 float4 PSMain(PSInput input) : SV_TARGET
 {
     float3 lightDir = float3(-0.32, -0.77, 0.56);
-    return FilamentBrdfLight(input, -lightDir);
+    float4 brdfColor = float4(0,0,0,1);
+    brdfColor = FilamentBrdfLight(input, -lightDir);
+    return GetSpotLightAttenuation(input, brdfColor);
 }
