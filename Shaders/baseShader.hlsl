@@ -123,9 +123,9 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
 
     float specularStrength = 0.2f;
     float D = D_GGX(NoH, roughness);
-    float3 F = F_Schlick_U(LoH, 0.0, 1.0);
+    float3 F = F_Schlick_U(LoH, 0.5, 1.0);
     float G = V_GGXCorrelated(NoV, NoL, roughness);
-    float3 sBRDF = (D * G); //* F ;
+    float3 sBRDF = (D * G)* F  ;
     sBRDF *= specularStrength;
 
     float3 dBRDF = diffuseColor * Fd_Lambert();
