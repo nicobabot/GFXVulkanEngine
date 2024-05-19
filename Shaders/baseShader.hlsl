@@ -17,6 +17,7 @@ struct UniformBufferObject
     float3 viewPos;
     int debugUtil;
     float deltaTime;
+    float4x4 lightSpaceMatrix;
 };
 
 cbuffer MyConstantBuffer : register(b0)

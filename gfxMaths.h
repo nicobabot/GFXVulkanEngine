@@ -148,4 +148,5 @@ struct UniformBufferObject
 	glm::vec3 viewPos;
 	alignas(4) int debugUtil;
 	float deltaTime;
+	alignas(16) glm::mat4 lightSpaceMatrix;
 };

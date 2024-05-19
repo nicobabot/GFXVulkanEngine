@@ -93,10 +93,15 @@ private:
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
 
+    VkRenderPass shadowMapRenderPass;
     VkRenderPass renderPass;
 
+    VkDescriptorSetLayout shadowMapDescriptorSetLayout;
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSetLayout computeDescriptorSetLayout;
+
+    VkPipelineLayout shadowMapPipelineLayout;
+    VkPipeline shadowMapPipeline;
 
     VkPipelineLayout graphicsPipelineLayout;
     VkPipeline graphicsPipeline;
@@ -106,6 +111,7 @@ private:
 
     VkPipelineLayout computePipelineLayout;
     VkPipeline computePipeline;
+    std::vector<VkFramebuffer> shadowMapFramebuffers;
     std::vector<VkFramebuffer> swapchainFramebuffers;
 
     VkCommandPool computeCommandPool;
@@ -115,6 +121,11 @@ private:
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
 
+    //DirShadowMapDepth
+    VkImage dirShadowMapDepthImage;
+    VkDeviceMemory dirShadowMapDepthMemory;
+    VkImageView dirShadowMapDepthImageView;
+
     //First texture
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
@@ -122,7 +133,6 @@ private:
     uint32_t mipLevels;
     //TODO: Make sampler not related with texture
     VkSampler textureSampler;
-
 
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -141,9 +151,11 @@ private:
     std::vector<VkBuffer> shaderStorageBuffers;
     std::vector<VkDeviceMemory> shaderStorageBuffersMemory;
 
+    VkDescriptorPool shadowMapDescriptorPool;
     VkDescriptorPool descriptorPool;
     VkDescriptorPool computeDescriptorPool;
 
+    std::vector<VkDescriptorSet> shadowMapDescriptorSets;
     std::vector<VkDescriptorSet> descriptorSets;
     std::vector<VkDescriptorSet> computeDescriptorSets;
 
@@ -192,11 +204,16 @@ private:
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipLevels);
     void CreateSwapChainImageViews();
+    void CreateShadowMapRenderPass();
     void CreateRenderPass();
+    void CreateShadowMapDescriptorSetLayout();
     void CreateDescriptorSetLayout();
+    void CreateShadowMapDescriptorPool();
     void CreateDescriptorPool();
+    void CreateShadowMapDescriptorSets();
     void CreateDescriptorSets();
     void CreateGraphicsPipeline();
+    void CreateShadowMapFramebuffers();
     void CreateFramebuffers();
     void CreateCommandPool();
     VkFormat FindSupportedFormat(std::vector<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
@@ -204,6 +221,7 @@ private:
     bool HasStencilComponent(VkFormat format);
     void CreateColorResources();
     void CreateDepthResources();
+    void CreateDirShadowMapResources();
     VkCommandBuffer BeginSingleTimeCommandBuffer();
     void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
