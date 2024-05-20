@@ -6,7 +6,7 @@
 
 void InputHandler::Init()
 {
-	position = glm::vec3(0.0f,0.0f,-4.0f);
+	position = glm::vec3(0.0f,4.0f,-4.0f);
 }
 
 void InputHandler::ReactToEvents(GLFWwindow &window)

@@ -51,7 +51,7 @@ void HelloTriangleApp::InitVulkan()
     CreateCommandPool();
     CreateColorResources();
     CreateDepthResources();
-    CreateDirShadowMapResources();
+    CreateShadowMapResources();
     CreateShadowMapFramebuffers();
     CreateFramebuffers();
     CreateTextureImage();
@@ -656,9 +656,9 @@ void HelloTriangleApp::CreateShadowMapRenderPass()
 {
     VkAttachmentDescription depthAttachmentDescr{};
     depthAttachmentDescr.format = FindDepthFormat();
-    depthAttachmentDescr.samples = msaaSamples;
+    depthAttachmentDescr.samples = VK_SAMPLE_COUNT_1_BIT;
     depthAttachmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     depthAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -931,7 +931,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     shadowMapGraphicPipelineInfo.descriptorSetLayout = shadowMapDescriptorSetLayout;
     shadowMapGraphicPipelineInfo.shaderStages = shadowMapShaderStages;
     shadowMapGraphicPipelineInfo.renderPass = shadowMapRenderPass;
-    shadowMapGraphicPipelineInfo.msaaSamples = msaaSamples;
+    shadowMapGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     shadowMapGraphicPipelineInfo.viewportExtent = swapChainExtent;
 
     CreateGraphicsPipeline_Internal(shadowMapGraphicPipelineInfo, shadowMapPipelineLayout, shadowMapPipeline);
@@ -1144,12 +1144,12 @@ void HelloTriangleApp::CreateDepthResources()
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
 }
 
-void HelloTriangleApp::CreateDirShadowMapResources() 
+void HelloTriangleApp::CreateShadowMapResources() 
 {
     VkFormat depthFormat = FindDepthFormat();
 
     CreateImage(swapChainExtent.width, swapChainExtent.height, 1,
-        msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+        VK_SAMPLE_COUNT_1_BIT, depthFormat, VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         dirShadowMapDepthImage, dirShadowMapDepthMemory);
@@ -2053,7 +2053,6 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     //ubo.modelM = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(0,1,0));
     ubo.modelM = glm::mat4(1.0f);
     glm::vec3 eyePos = inputHandler.GetPosition();
-    eyePos.y *= -1;
     ubo.viewPos = eyePos;
     ubo.viewM = glm::lookAt(eyePos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
     ubo.projM = glm::perspective(glm::radians(45.0f), 
@@ -2062,11 +2061,18 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     ubo.debugUtil = inputHandler.IsDebugEnabled() ? 1:0;
     ubo.deltaTime = time;
 
-    float near_plane = 1.0f, far_plane = 7.5f;
-    glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-    glm::mat4 lightView = glm::lookAt(glm::vec3(-2.0f, 4.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-    glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.lightSpaceMatrix = lightProjection * lightView;
+    glm::vec3 lightDirection = glm::vec3(-0.32f, -0.77f, 0.56f);
+    glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    float left = -10.0f, right = 10.0f, bottom = -10.0f, top = 10.0f, near = 1.0f, far = 20.0f;
+
+    //Having problems creating the projection with Orthogonal
+    glm::mat4 lightView = glm::lookAt(glm::vec3(15.5f, 18.3f, -21.0f), target, up);
+    //glm::mat4 lightProjection = glm::ortho(left, right, bottom, top, near, far);
+    glm::mat4 lightProjection = glm::perspective(glm::radians(45.0f),
+        swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 500.0f);
+    lightProjection[1][1] *= -1;
+    ubo.lightSpaceMatrix =  lightProjection * lightView;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
@@ -2179,7 +2185,7 @@ void HelloTriangleApp::RecreateSwapChain()
     //Recreate
     CreateSwapChain();
     CreateSwapChainImageViews();
-    CreateDirShadowMapResources();
+    CreateShadowMapResources();
     CreateColorResources();
     CreateDepthResources();
     CreateShadowMapFramebuffers();

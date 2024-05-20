@@ -152,13 +152,13 @@ float4 PSMain(PSInput input) : SV_TARGET
     p.linearK = 0.22f;
     p.quadraticK = 0.20f;
 
-    float3 pintLightDir = normalize(p.position - input.fragPos);
+    /*float3 pintLightDir = normalize(p.position - input.fragPos);
     float4 pointBrdfColor = FilamentBrdfLight(input, pintLightDir);
 
     float attenuation = GetSpotLightAttenuation(input, p);
     pointBrdfColor *= attenuation;
 
-    brdfColor += pointBrdfColor;
+    brdfColor += pointBrdfColor;*/
 
     return brdfColor;
 }

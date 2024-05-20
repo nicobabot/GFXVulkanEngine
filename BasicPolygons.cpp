@@ -127,7 +127,7 @@ GfxPlane::GfxPlane(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelin
 
 
 	glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0, -3, 0));
-	glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(100, 0, 100));
+	glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(25, 0, 25));
 
 	glm::mat4 transSacaleMat = translationMatrix * scaleMatrix;
 
