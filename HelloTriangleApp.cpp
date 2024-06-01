@@ -820,8 +820,15 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     sampledImageLayoutBinding.pImmutableSamplers = nullptr;
     sampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 3> bindings = {uboLayoutBinding, 
-        samplerLayoutBinding, sampledImageLayoutBinding };
+    VkDescriptorSetLayoutBinding depthShadowImageLayoutBinding{};
+    depthShadowImageLayoutBinding.binding = 3;
+    depthShadowImageLayoutBinding.descriptorCount = 1;
+    depthShadowImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    depthShadowImageLayoutBinding.pImmutableSamplers = nullptr;
+    depthShadowImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {uboLayoutBinding, 
+        samplerLayoutBinding, sampledImageLayoutBinding, depthShadowImageLayoutBinding };
     VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
     descriptorSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -1150,7 +1157,7 @@ void HelloTriangleApp::CreateShadowMapResources()
 
     CreateImage(swapChainExtent.width, swapChainExtent.height, 1,
         VK_SAMPLE_COUNT_1_BIT, depthFormat, VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         dirShadowMapDepthImage, dirShadowMapDepthMemory);
 
@@ -1208,7 +1215,7 @@ void HelloTriangleApp::TransitionImageLayout(VkImage image, VkFormat format,
     imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     imageMemoryBarrier.image = image;
     
-    if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) 
+    if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL || oldLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
     {
         imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
@@ -1254,6 +1261,33 @@ void HelloTriangleApp::TransitionImageLayout(VkImage image, VkFormat format,
             | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         srcStageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        dstStageFlags = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    }
+    else if(oldLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL &&
+        newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+    {
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+        srcStageFlags = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dstStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL &&
+        newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    {
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        srcStageFlags = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dstStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
+        newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+    {
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;;
+
+        srcStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         dstStageFlags = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     }
     else
@@ -1588,13 +1622,15 @@ void HelloTriangleApp::CreateShadowMapDescriptorPool()
 
 void HelloTriangleApp::CreateDescriptorPool()
 {
-    std::array<VkDescriptorPoolSize, 3> descriptorPoolSize;
+    std::array<VkDescriptorPoolSize, 4> descriptorPoolSize;
     descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     descriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
     descriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     descriptorPoolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     descriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorPoolSize[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    descriptorPoolSize[3].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1672,6 +1708,10 @@ void HelloTriangleApp::CreateShadowMapDescriptorSets()
 
 void HelloTriangleApp::CreateDescriptorSets()
 {
+    VkFormat depthFormat = FindDepthFormat();
+    TransitionImageLayout(dirShadowMapDepthImage, depthFormat,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, 1);
+
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
     descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1709,7 +1749,7 @@ void HelloTriangleApp::CreateDescriptorSets()
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
-        std::array<VkWriteDescriptorSet, 3> writeDescriptorSet{};
+        std::array<VkWriteDescriptorSet, 4> writeDescriptorSet{};
         writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSet[0].dstSet = descriptorSets[i];
         writeDescriptorSet[0].dstBinding = 0;
@@ -1743,6 +1783,19 @@ void HelloTriangleApp::CreateDescriptorSets()
         writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         writeDescriptorSet[2].descriptorCount = 1;
         writeDescriptorSet[2].pImageInfo = &imageInfo;
+
+        VkDescriptorImageInfo imageInfo2{};
+        imageInfo2.imageView = dirShadowMapDepthImageView;
+        imageInfo2.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        imageInfo2.sampler = nullptr;
+
+        writeDescriptorSet[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[3].dstSet = descriptorSets[i];
+        writeDescriptorSet[3].dstBinding = 3;
+        writeDescriptorSet[3].dstArrayElement = 0;
+        writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[3].descriptorCount = 1;
+        writeDescriptorSet[3].pImageInfo = &imageInfo2;
 
         vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
             writeDescriptorSet.data(), 0, nullptr);
@@ -1951,6 +2004,14 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdEndRenderPass(commandBuffer);
 
+    //VkFormat depthFormat = FindDepthFormat();
+    //TransitionImageLayout(dirShadowMapDepthImage, depthFormat,
+    //    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+    //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    //VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL 
+    //VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL
+    //VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+
     //Color lighting renderpass
 
     VkRenderPassBeginInfo renderPassBeginInfo{};
@@ -2068,7 +2129,7 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
 
     //Having problems creating the projection with Orthogonal
     glm::mat4 lightView = glm::lookAt(glm::vec3(15.5f, 18.3f, -21.0f), target, up);
-    //glm::mat4 lightProjection = glm::ortho(left, right, bottom, top, near, far);
+    //glm::mat4 lightProjection = glm::ortho(left, right, bottom, top, 0.01f, 50.0f);
     glm::mat4 lightProjection = glm::perspective(glm::radians(45.0f),
         swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 500.0f);
     lightProjection[1][1] *= -1;

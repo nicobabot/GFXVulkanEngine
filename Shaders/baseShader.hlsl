@@ -6,6 +6,7 @@ struct PSInput
     float3 fragTexCoord : TEXCOORD0;
     float4 fragPos : POSITION1;
     float4 viewPos : POSITION2;
+    float4 fragPosLightSpace : POSITION3;
     //int debugUtilF : POSITION2;
 };
 
@@ -27,6 +28,7 @@ cbuffer MyConstantBuffer : register(b0)
 
 SamplerState mySampler : register(s1);
 Texture2D imageTexture : register(t2);
+Texture2D<float> depthShadowTexture : register(t3);
 
 #include "brdf.hlsl"
 #define SAMPLE_TEXTURE 0
@@ -45,6 +47,7 @@ PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR,
     //result.debugUtilF = ubo.debugUtil;
     result.fragTexCoord = float3(inTexCoord, 1.0f);
     result.viewPos = float4(ubo.viewPos,1.0f);
+    result.fragPosLightSpace = mul(ubo.lightSpaceMatrix, result.position);
 
     return result;
 }
@@ -140,6 +143,20 @@ float GetSpotLightAttenuation(PSInput input, PointLight p)
     return (1 / (p.constantK + p.linearK * d + p.quadraticK * d * d));
 }
 
+float GetShadowOcclussion(PSInput input)
+{
+    // perform perspective divide
+    float3 projCoords = input.fragPosLightSpace.xyz / input.fragPosLightSpace.w;
+    // transform to [0,1] range
+    projCoords = projCoords * 0.5f + 0.5f;
+    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords
+    float3 closestDepth = depthShadowTexture.Sample(mySampler, input.fragTexCoord.rg);
+    // get depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+    // check whether current frag pos is in shadow
+    return currentDepth > closestDepth  ? 1.0 : 0.0;
+}
+
 float4 PSMain(PSInput input) : SV_TARGET
 {
     float3 lightDir = float3(-0.32, -0.77, 0.56);
@@ -160,5 +177,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 
     brdfColor += pointBrdfColor;*/
 
-    return brdfColor;
+    float shadow = GetShadowOcclussion(input);
+
+    return brdfColor * (1-shadow);
 }

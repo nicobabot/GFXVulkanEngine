@@ -22,7 +22,8 @@ cbuffer MyConstantBuffer : register(b0)
 PSInput VSMain(float4 inPosition : SV_POSITION)
 {
     PSInput result;
-    result.position = mul(ubo.lightSpaceMatrix, mul(ubo.modelM, inPosition));
+    //result.position = mul(ubo.lightSpaceMatrix, mul(ubo.modelM, inPosition));
+    result.position = mul(mul(ubo.lightSpaceMatrix, ubo.modelM), inPosition);
     return result;
 }
 
