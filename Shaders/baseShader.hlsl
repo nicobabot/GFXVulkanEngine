@@ -32,6 +32,7 @@ Texture2D<float> depthShadowTexture : register(t3);
 
 #include "brdf.hlsl"
 #define SAMPLE_TEXTURE 0
+#define SHADOW_MAP 0
 
 PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR, 
     float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
@@ -47,7 +48,8 @@ PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR,
     //result.debugUtilF = ubo.debugUtil;
     result.fragTexCoord = float3(inTexCoord, 1.0f);
     result.viewPos = float4(ubo.viewPos,1.0f);
-    result.fragPosLightSpace = mul(ubo.lightSpaceMatrix, result.position);
+    result.fragPosLightSpace = mul(ubo.lightSpaceMatrix, mul(ubo.modelM, inPosition));
+    //result.fragPosLightSpace = mul(ubo.lightSpaceMatrix, result.position);
 
     return result;
 }
@@ -150,7 +152,7 @@ float GetShadowOcclussion(PSInput input)
     // transform to [0,1] range
     projCoords = projCoords * 0.5f + 0.5f;
     // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords
-    float3 closestDepth = depthShadowTexture.Sample(mySampler, input.fragTexCoord.rg);
+    float closestDepth = depthShadowTexture.Sample(mySampler, projCoords.xy).x;
     // get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
     // check whether current frag pos is in shadow
@@ -177,7 +179,10 @@ float4 PSMain(PSInput input) : SV_TARGET
 
     brdfColor += pointBrdfColor;*/
 
+#if SHADOW_MAP
     float shadow = GetShadowOcclussion(input);
-
-    return brdfColor * (1-shadow);
+#else // #if SHADOW_MAP
+    float shadow = 0;
+#endif // #else //#if SHADOW_MAP
+    return float4(brdfColor.rgb * (1-shadow), 1);
 }
