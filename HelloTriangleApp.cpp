@@ -2022,7 +2022,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     renderPassBeginInfo.renderArea.extent = swapChainExtent;
 
     std::array<VkClearValue, 3> clearValues{};
-    clearValues[0].color = {0.0f,0.0f,0.0f,1.0f};
+    clearValues[0].color = {1.0f,0.0f,1.0f,1.0f};
     clearValues[1].depthStencil = {1.0f, 0};
     clearValues[2].color = { 0.0f,0.0f,0.0f,1.0f };
     renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -2127,11 +2127,10 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
     float left = -10.0f, right = 10.0f, bottom = -10.0f, top = 10.0f, near = 1.0f, far = 20.0f;
 
+
     //Having problems creating the projection with Orthogonal
     glm::mat4 lightView = glm::lookAt(glm::vec3(15.5f, 18.3f, -21.0f), target, up);
-    //glm::mat4 lightProjection = glm::ortho(left, right, bottom, top, 0.01f, 50.0f);
-    glm::mat4 lightProjection = glm::perspective(glm::radians(45.0f),
-        swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 500.0f);
+    glm::mat4 lightProjection = glm::ortho(left, right, bottom, top, -50.0f, 50.0f);
     lightProjection[1][1] *= -1;
     ubo.lightSpaceMatrix =  lightProjection * lightView;
 
