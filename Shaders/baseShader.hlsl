@@ -32,8 +32,9 @@ Texture2D<float> depthShadowTexture : register(t3);
 
 #include "brdf.hlsl"
 #define SAMPLE_TEXTURE 0
+#define SIMPLE_COLOR 1
 #define SHADOW_MAP 1
-#define SHADOWMAP_DRAW_IN_GEOMETRY 1
+#define SHADOWMAP_DRAW_IN_GEOMETRY 0
 
 PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR, 
     float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
@@ -49,9 +50,7 @@ PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR,
     //result.debugUtilF = ubo.debugUtil;
     result.fragTexCoord = float3(inTexCoord, 1.0f);
     result.viewPos = float4(ubo.viewPos,1.0f);
-    float3 worldPos = float3(mul(ubo.modelM, inPosition).xyz);
-    result.fragPosLightSpace = mul(ubo.lightSpaceMatrix, float4(worldPos,1.0f));
-    //result.fragPosLightSpace = mul(ubo.lightSpaceMatrix, result.position);
+    result.fragPosLightSpace = mul(ubo.lightSpaceMatrix, result.fragPos);
 
     return result;
 }
@@ -149,28 +148,32 @@ float GetSpotLightAttenuation(PSInput input, PointLight p)
 
 float GetShadowOcclussion(PSInput input)
 {
-    
     // perform perspective divide
-    float3 projCoords = input.fragPosLightSpace.xyz / input.fragPosLightSpace.w;
+    float3 projCoordsShadows = input.fragPosLightSpace.xyz / input.fragPosLightSpace.w;
     // transform to [0,1] range
-    projCoords = projCoords * 0.5f + 0.5f;
+    float2 projSample = projCoordsShadows.xy * 0.5f + 0.5f;
 
-    if(projCoords.z > 1.0)
-        return 0.0;
+    //if(projCoordsShadows.z > 1.0)
+      //  return 0.0;
 
     // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords
-    float closestDepth = depthShadowTexture.Sample(mySampler, projCoords.xy).r;
+    float closestDepth = depthShadowTexture.Sample(mySampler, projSample).r;
     // get depth of current fragment from light's perspective
-    float currentDepth = projCoords.z;
+    float currentDepth = projCoordsShadows.z;
     // check whether current frag pos is in shadow
-    return currentDepth > closestDepth  ? 1.0 : 0.0;
+    float bias = 0.005;
+    return currentDepth - bias > closestDepth  ? 1.0 : 0.0;
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
     float3 lightDir = float3(-0.32, -0.77, 0.56);
     float4 brdfColor = float4(0,0,0,1);
+#if SIMPLE_COLOR
+    brdfColor= input.fragColor;
+#else // #if SIMPLE_COLOR
     brdfColor = FilamentBrdfLight(input, -lightDir);
+#endif // #else // #if SIMPLE_COLOR
 
     PointLight p;
     p.position = float3(0.0f, 0.0f, 1.5f);
@@ -188,14 +191,15 @@ float4 PSMain(PSInput input) : SV_TARGET
 
 
 #if SHADOWMAP_DRAW_IN_GEOMETRY
-    float3 projCoords = input.fragPosLightSpace.xyz / input.fragPosLightSpace.w;
-    projCoords = projCoords * 0.5f + 0.5f;
-    float dL = depthShadowTexture.Sample(mySampler, projCoords.xy).r;
+    float3 projCoordsT = input.fragPosLightSpace.xyz / input.fragPosLightSpace.w;
+    projCoordsT = projCoordsT * 0.5f + 0.5f;
+    float dL = depthShadowTexture.Sample(mySampler, projCoordsT.xy).r;
     return float4(dL.r, dL.r, dL.r, 1.0f);
 #endif // #if SHADOWMAP_DRAW_IN_GEOMETRY;
 
 #if SHADOW_MAP
     float shadow = GetShadowOcclussion(input);
+    //return float4(shadow,shadow,shadow,1.0f);
 #else // #if SHADOW_MAP
     float shadow = 0;
 #endif // #else //#if SHADOW_MAP
