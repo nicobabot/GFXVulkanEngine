@@ -2129,7 +2129,7 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
 
 
     //Having problems creating the projection with Orthogonal
-    glm::mat4 lightView = glm::lookAt(glm::vec3(3.5f, 6.6f, -4.5f), target, up);
+    glm::mat4 lightView = glm::lookAt(glm::vec3(0.32, 0.77, -0.56), target, up);
     glm::mat4 lightProjection = glm::ortho(left, right, bottom, top, near, far);
     lightProjection[1][1] *= -1;
     ubo.lightSpaceMatrix =  lightProjection * lightView;

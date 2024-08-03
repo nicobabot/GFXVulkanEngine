@@ -32,7 +32,7 @@ Texture2D<float> depthShadowTexture : register(t3);
 
 #include "brdf.hlsl"
 #define SAMPLE_TEXTURE 0
-#define SIMPLE_COLOR 1
+#define SIMPLE_COLOR 0
 #define SHADOW_MAP 1
 #define SHADOWMAP_DRAW_IN_GEOMETRY 0
 
@@ -146,7 +146,7 @@ float GetSpotLightAttenuation(PSInput input, PointLight p)
     return (1 / (p.constantK + p.linearK * d + p.quadraticK * d * d));
 }
 
-float GetShadowOcclussion(PSInput input)
+float GetShadowOcclussion(PSInput input, float3 lightDir)
 {
     // perform perspective divide
     float3 projCoordsShadows = input.fragPosLightSpace.xyz / input.fragPosLightSpace.w;
@@ -161,7 +161,8 @@ float GetShadowOcclussion(PSInput input)
     // get depth of current fragment from light's perspective
     float currentDepth = projCoordsShadows.z;
     // check whether current frag pos is in shadow
-    float bias = 0.005;
+    //float bias = 0.01f;
+    float bias = max(0.05 * (1.0 - dot(input.normal, lightDir)), 0.005);  
     return currentDepth - bias > closestDepth  ? 1.0 : 0.0;
 }
 
@@ -198,7 +199,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 #endif // #if SHADOWMAP_DRAW_IN_GEOMETRY;
 
 #if SHADOW_MAP
-    float shadow = GetShadowOcclussion(input);
+    float shadow = GetShadowOcclussion(input, lightDir);
     //return float4(shadow,shadow,shadow,1.0f);
 #else // #if SHADOW_MAP
     float shadow = 0;

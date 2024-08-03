@@ -195,7 +195,7 @@ float GetSpotLightAttenuation(PSInput input, PointLight p)
     return (1 / (p.constantK + p.linearK * d + p.quadraticK * d * d));
 }
 
-float GetShadowOcclussion(PSInput input)
+float GetShadowOcclussion(PSInput input, float3 lightDir)
 {
 
     float3 projCoordsShadows = input.fragPosLightSpace.xyz / input.fragPosLightSpace.w;
@@ -210,7 +210,8 @@ float GetShadowOcclussion(PSInput input)
 
     float currentDepth = projCoordsShadows.z;
 
-    float bias = 0.005;
+
+    float bias = max(0.05 * (1.0 - dot(input.normal, lightDir)), 0.005);
     return currentDepth - bias > closestDepth ? 1.0 : 0.0;
 }
 
@@ -219,9 +220,9 @@ float4 PSMain(PSInput input) : SV_TARGET
     float3 lightDir = float3(-0.32, -0.77, 0.56);
     float4 brdfColor = float4(0,0,0,1);
 
-    brdfColor= input.fragColor;
 
 
+    brdfColor = FilamentBrdfLight(input, -lightDir);
 
 
     PointLight p;
@@ -229,8 +230,8 @@ float4 PSMain(PSInput input) : SV_TARGET
     p.constantK = 1.0f;
     p.linearK = 0.22f;
     p.quadraticK = 0.20f;
-#line 201 "Shaders/baseShader.hlsl"
-    float shadow = GetShadowOcclussion(input);
+#line 202 "Shaders/baseShader.hlsl"
+    float shadow = GetShadowOcclussion(input, lightDir);
 
 
 
