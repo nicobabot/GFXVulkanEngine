@@ -662,7 +662,7 @@ void HelloTriangleApp::CreateShadowMapRenderPass()
     depthAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference depthAttachment{};
     depthAttachment.attachment = 0;
@@ -968,7 +968,9 @@ void HelloTriangleApp::CreateGraphicsPipeline()
         brdfPipelineLayout, brdfPipeline);*/
 
     vkDestroyShaderModule(gfxCtx->logicalDevice, vertexShaderModule, nullptr);
-    vkDestroyShaderModule(gfxCtx->logicalDevice, fragmentShaderModule, nullptr);
+    vkDestroyShaderModule(gfxCtx->logicalDevice, fragmentShaderModule, nullptr);    
+    vkDestroyShaderModule(gfxCtx->logicalDevice, shadowMapVertexShaderModule, nullptr);
+    vkDestroyShaderModule(gfxCtx->logicalDevice, shadowMapFragmentShaderModule, nullptr);
    // vkDestroyShaderModule(gfxCtx->logicalDevice, brdfFragmentShaderModule, nullptr);
 
 #if COMPUTE_FEATURE
@@ -2254,6 +2256,10 @@ void HelloTriangleApp::RecreateSwapChain()
 
 void HelloTriangleApp::CleanupSwapChain()
 {
+    vkDestroyImageView(gfxCtx->logicalDevice, dirShadowMapDepthImageView, nullptr);
+    vkDestroyImage(gfxCtx->logicalDevice, dirShadowMapDepthImage, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, dirShadowMapDepthMemory, nullptr);
+
     vkDestroyImageView(gfxCtx->logicalDevice, depthImageView, nullptr);
     vkDestroyImage(gfxCtx->logicalDevice, depthImage, nullptr);
     vkFreeMemory(gfxCtx->logicalDevice, depthImageMemory, nullptr);
@@ -2263,6 +2269,10 @@ void HelloTriangleApp::CleanupSwapChain()
     vkFreeMemory(gfxCtx->logicalDevice, colorImageMemory, nullptr);
 
     for (VkFramebuffer framebuffer : swapchainFramebuffers)
+    {
+        vkDestroyFramebuffer(gfxCtx->logicalDevice, framebuffer, nullptr);
+    }
+    for (VkFramebuffer framebuffer : shadowMapFramebuffers)
     {
         vkDestroyFramebuffer(gfxCtx->logicalDevice, framebuffer, nullptr);
     }
@@ -2318,12 +2328,15 @@ void HelloTriangleApp::Cleanup()
     
     vkDestroyCommandPool(gfxCtx->logicalDevice, gfxCtx->commandPool, nullptr);
     vkDestroyDescriptorPool(gfxCtx->logicalDevice, descriptorPool, nullptr);
+    vkDestroyDescriptorPool(gfxCtx->logicalDevice, shadowMapDescriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, descriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, shadowMapDescriptorSetLayout, nullptr);
     vkDestroyPipeline(gfxCtx->logicalDevice, graphicsPipeline, nullptr);
-    //vkDestroyPipeline(gfxCtx->logicalDevice, brdfPipeline, nullptr);
     vkDestroyPipelineLayout(gfxCtx->logicalDevice, graphicsPipelineLayout, nullptr);
-    //vkDestroyPipelineLayout(gfxCtx->logicalDevice, brdfPipelineLayout, nullptr);
+    vkDestroyPipeline(gfxCtx->logicalDevice, shadowMapPipeline, nullptr);
+    vkDestroyPipelineLayout(gfxCtx->logicalDevice, shadowMapPipelineLayout, nullptr);
     vkDestroyRenderPass(gfxCtx->logicalDevice, renderPass, nullptr);
+    vkDestroyRenderPass(gfxCtx->logicalDevice, shadowMapRenderPass, nullptr);
 
 #if COMPUTE_FEATURE
     vkDestroyCommandPool(gfxCtx->logicalDevice, computeCommandPool, nullptr);
