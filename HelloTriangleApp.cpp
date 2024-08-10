@@ -1710,10 +1710,6 @@ void HelloTriangleApp::CreateShadowMapDescriptorSets()
 
 void HelloTriangleApp::CreateDescriptorSets()
 {
-    VkFormat depthFormat = FindDepthFormat();
-    TransitionImageLayout(dirShadowMapDepthImage, depthFormat,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, 1);
-
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
     descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1844,6 +1840,88 @@ void HelloTriangleApp::CreateDescriptorSets()
             0, nullptr);
 
 #endif//#if COMPUTE_FEATURE
+    }
+}
+
+void HelloTriangleApp::UpdateDescriptorSets()
+{
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        std::array<VkWriteDescriptorSet, 1> writeDescriptorSet{};
+        writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[0].dstSet = shadowMapDescriptorSets[i];
+        writeDescriptorSet[0].dstBinding = 0;
+        writeDescriptorSet[0].dstArrayElement = 0;
+        writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet[0].descriptorCount = 1;
+        writeDescriptorSet[0].pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
+            writeDescriptorSet.data(), 0, nullptr);
+    }
+
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        std::array<VkWriteDescriptorSet, 4> writeDescriptorSet{};
+        writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[0].dstSet = descriptorSets[i];
+        writeDescriptorSet[0].dstBinding = 0;
+        writeDescriptorSet[0].dstArrayElement = 0;
+        writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet[0].descriptorCount = 1;
+        writeDescriptorSet[0].pBufferInfo = &bufferInfo;
+
+        VkDescriptorImageInfo samplerInfo{};
+        samplerInfo.sampler = textureSampler;
+        samplerInfo.imageView = nullptr;
+        samplerInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[1].dstSet = descriptorSets[i];
+        writeDescriptorSet[1].dstBinding = 1;
+        writeDescriptorSet[1].dstArrayElement = 0;
+        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        writeDescriptorSet[1].descriptorCount = 1;
+        writeDescriptorSet[1].pImageInfo = &samplerInfo;
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageView = textureImageView;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.sampler = nullptr;
+
+        writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[2].dstSet = descriptorSets[i];
+        writeDescriptorSet[2].dstBinding = 2;
+        writeDescriptorSet[2].dstArrayElement = 0;
+        writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[2].descriptorCount = 1;
+        writeDescriptorSet[2].pImageInfo = &imageInfo;
+
+        VkDescriptorImageInfo imageInfo2{};
+        imageInfo2.imageView = dirShadowMapDepthImageView;
+        imageInfo2.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        imageInfo2.sampler = nullptr;
+
+        writeDescriptorSet[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[3].dstSet = descriptorSets[i];
+        writeDescriptorSet[3].dstBinding = 3;
+        writeDescriptorSet[3].dstArrayElement = 0;
+        writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[3].descriptorCount = 1;
+        writeDescriptorSet[3].pImageInfo = &imageInfo2;
+
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
+            writeDescriptorSet.data(), 0, nullptr);
     }
 }
 
@@ -2252,6 +2330,8 @@ void HelloTriangleApp::RecreateSwapChain()
     CreateDepthResources();
     CreateShadowMapFramebuffers();
     CreateFramebuffers();
+    UpdateDescriptorSets();
+    //CreateDescriptorSets();
 }
 
 void HelloTriangleApp::CleanupSwapChain()

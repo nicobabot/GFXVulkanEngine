@@ -212,6 +212,7 @@ private:
     void CreateDescriptorPool();
     void CreateShadowMapDescriptorSets();
     void CreateDescriptorSets();
+    void UpdateDescriptorSets();
     void CreateGraphicsPipeline();
     void CreateShadowMapFramebuffers();
     void CreateFramebuffers();
