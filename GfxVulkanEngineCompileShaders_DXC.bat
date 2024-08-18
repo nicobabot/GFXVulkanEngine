@@ -14,3 +14,6 @@ C:\DXC\bin\x64\dxc.exe -P -Fi Shaders/PreprocessedShaders/shadowMapFragment_prep
 C:\DXC\bin\x64\dxc.exe -spirv -Zi -O3 Shaders/PreprocessedShaders/shadowMapFragment_preprocessed.hlsl -T ps_6_2 -E PSMain -Fo CompiledShaders/shadowMapFrag.spv
 copy "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\CompiledShaders\shadowMapVert.spv" "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"
 copy "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\CompiledShaders\shadowMapFrag.spv" "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"
+
+C:\DXC\bin\x64\dxc.exe -T cs_6_0 -E main -spirv -Fo CompiledShaders/cs_blur.spv Shaders/cs_blur.hlsl
+copy "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\CompiledShaders\cs_blur.spv" "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"

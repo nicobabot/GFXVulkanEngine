@@ -975,7 +975,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
 #if COMPUTE_FEATURE
 
-    std::vector<char> computeShader = ReadFile("CompiledShaders/compute.spv");
+    std::vector<char> computeShader = ReadFile("CompiledShaders/cs_blur.spv");
     VkShaderModule computeShaderModule = CreateShaderModule(computeShader);
 
     VkPipelineShaderStageCreateInfo computePipelineCreateInfo{};
@@ -2084,14 +2084,6 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdEndRenderPass(commandBuffer);
 
-    //VkFormat depthFormat = FindDepthFormat();
-    //TransitionImageLayout(dirShadowMapDepthImage, depthFormat,
-    //    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
-    //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-    //VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL 
-    //VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL
-    //VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-
     //Color lighting renderpass
 
     VkRenderPassBeginInfo renderPassBeginInfo{};
@@ -2142,6 +2134,13 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     }
 
     vkCmdEndRenderPass(commandBuffer);
+
+    //Compute Blur
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+        computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
+
+    vkCmdDispatch(commandBuffer, OBJECT_COUNT / 256, 1, 1);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) 
     {
@@ -2207,8 +2206,6 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
     float left = -10.0f, right = 10.0f, bottom = -10.0f, top = 10.0f, near = -50.0f, far = 50.0f;
 
-
-    //Having problems creating the projection with Orthogonal
     glm::mat4 lightView = glm::lookAt(glm::vec3(0.32, 0.77, -0.56), target, up);
     glm::mat4 lightProjection = glm::ortho(left, right, bottom, top, near, far);
     lightProjection[1][1] *= -1;
@@ -2243,22 +2240,22 @@ void HelloTriangleApp::DrawFrame()
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 #if COMPUTE_FEATURE
-    //Need to add more sync for compute?
-    VkSubmitInfo computeSubmitInfo{};
-    computeSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    computeSubmitInfo.waitSemaphoreCount = 0;
-    //computeSubmitInfo.pWaitSemaphores = waitSemaphores;
-    computeSubmitInfo.pWaitDstStageMask = waitStages;
-    computeSubmitInfo.commandBufferCount = 1;
-    computeSubmitInfo.pCommandBuffers = &computeCommandBuffers[currentFrame];
-    computeSubmitInfo.signalSemaphoreCount = 0;
+    ////Need to add more sync for compute?
+    //VkSubmitInfo computeSubmitInfo{};
+    //computeSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    //computeSubmitInfo.waitSemaphoreCount = 0;
+    ////computeSubmitInfo.pWaitSemaphores = waitSemaphores;
+    //computeSubmitInfo.pWaitDstStageMask = waitStages;
+    //computeSubmitInfo.commandBufferCount = 1;
+    //computeSubmitInfo.pCommandBuffers = &computeCommandBuffers[currentFrame];
+    //computeSubmitInfo.signalSemaphoreCount = 0;
 
-    RecordComputeCommandBuffer(computeCommandBuffers[currentFrame]);
+    //RecordComputeCommandBuffer(computeCommandBuffers[currentFrame]);
 
-    if (vkQueueSubmit(computeQueue, 1, &computeSubmitInfo, nullptr) != VK_SUCCESS) 
-    {
-        throw std::runtime_error("Error submitting compute command buffer");
-    }
+    //if (vkQueueSubmit(computeQueue, 1, &computeSubmitInfo, nullptr) != VK_SUCCESS) 
+    //{
+    //    throw std::runtime_error("Error submitting compute command buffer");
+    //}
 #endif//#if COMPUTE_FEATURE
 
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
