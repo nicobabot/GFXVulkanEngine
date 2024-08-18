@@ -2331,7 +2331,6 @@ void HelloTriangleApp::RecreateSwapChain()
     CreateShadowMapFramebuffers();
     CreateFramebuffers();
     UpdateDescriptorSets();
-    //CreateDescriptorSets();
 }
 
 void HelloTriangleApp::CleanupSwapChain()

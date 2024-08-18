@@ -85,6 +85,7 @@ float Fd_Burley(float NoV, float NoL, float LoH, float roughness)
 
 
 
+
 PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR,
     float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
 {
@@ -206,13 +207,34 @@ float GetShadowOcclussion(PSInput input, float3 lightDir)
 
 
 
-    float closestDepth = depthShadowTexture.Sample(mySampler, projSample).r;
-
     float currentDepth = projCoordsShadows.z;
 
 
     float bias = max(0.05 * (1.0 - dot(input.normal, lightDir)), 0.005);
-    return currentDepth - bias > closestDepth ? 1.0 : 0.0;
+
+
+
+
+
+
+
+    float width, height;
+    depthShadowTexture.GetDimensions(width, height);
+    float2 texelSize = 1.0f/float2(width,height);
+    float shadow = 0.0f;
+    int sampleIt = 1;
+    for(int x = -sampleIt; x<=sampleIt; ++x)
+    {
+        for(int y = -sampleIt; y<=sampleIt; ++y)
+        {
+            float pcfShadow = depthShadowTexture.Sample(mySampler, projSample.xy + float2(x,y) * texelSize).r;
+            shadow += currentDepth - bias > pcfShadow ? 1.0f : 0.0f;
+        }
+    }
+
+    int totalSamples = (2.0f*sampleIt)+1.0f;
+    return shadow / totalSamples;
+
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
@@ -230,7 +252,7 @@ float4 PSMain(PSInput input) : SV_TARGET
     p.constantK = 1.0f;
     p.linearK = 0.22f;
     p.quadraticK = 0.20f;
-#line 202 "Shaders/baseShader.hlsl"
+#line 224 "Shaders/baseShader.hlsl"
     float shadow = GetShadowOcclussion(input, lightDir);
 
 

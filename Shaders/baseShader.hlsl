@@ -35,6 +35,7 @@ Texture2D<float> depthShadowTexture : register(t3);
 #define SIMPLE_COLOR 0
 #define SHADOW_MAP 1
 #define SHADOWMAP_DRAW_IN_GEOMETRY 0
+#define USE_PCF_SHADOWS 1
 
 PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR, 
     float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
@@ -156,14 +157,35 @@ float GetShadowOcclussion(PSInput input, float3 lightDir)
     //if(projCoordsShadows.z > 1.0)
       //  return 0.0;
 
-    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords
-    float closestDepth = depthShadowTexture.Sample(mySampler, projSample).r;
     // get depth of current fragment from light's perspective
     float currentDepth = projCoordsShadows.z;
     // check whether current frag pos is in shadow
     //float bias = 0.01f;
     float bias = max(0.05 * (1.0 - dot(input.normal, lightDir)), 0.005);  
+
+
+#if USE_PCF_SHADOWS == 0
+    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords
+    float closestDepth = depthShadowTexture.Sample(mySampler, projSample).r;
     return currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+#else //#if USE_PCF_SHADOWS == 0
+    float width, height;
+    depthShadowTexture.GetDimensions(width, height);
+    float2 texelSize = 1.0f/float2(width,height);
+    float shadow = 0.0f;
+    int sampleIt = 1;
+    for(int x = -sampleIt; x<=sampleIt; ++x)
+    {
+        for(int y = -sampleIt; y<=sampleIt; ++y)
+        {
+            float pcfShadow = depthShadowTexture.Sample(mySampler, projSample.xy + float2(x,y) * texelSize).r;
+            shadow += currentDepth - bias > pcfShadow ? 1.0f : 0.0f;
+        }
+    }
+
+    int totalSamples = (2.0f*sampleIt)+1.0f;
+    return shadow / totalSamples;
+#endif //#else //#if USE_PCF_SHADOWS == 0
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
