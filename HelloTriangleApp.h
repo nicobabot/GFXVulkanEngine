@@ -140,6 +140,11 @@ private:
     VkDeviceMemory colorImageMemory;
     VkImageView colorImageView;
 
+    //Blur
+    VkImage blurImage;
+    VkDeviceMemory blurImageMemory;
+    VkImageView blurImageView;
+
     //TODO: store vertex + index in the same buffer for memory aliasing
     //https://developer.nvidia.com/vulkan-memory-management 
 

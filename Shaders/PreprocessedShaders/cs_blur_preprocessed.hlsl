@@ -1,3 +1,4 @@
+#line 1 "Shaders/cs_blur.hlsl"
 struct UniformBufferObject
 {
     float4x4 modelM;
@@ -28,10 +29,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
 {
     uint index = DTid.x;
 
-  // Kernel radius and weights
+
     static const int KERNEL_RADIUS = 5;
     static const float kernel[2 * KERNEL_RADIUS + 1] = {
-        0.06136, 0.24477, 0.38774, 0.24477, 0.06136, 
+        0.06136, 0.24477, 0.38774, 0.24477, 0.06136,
         0.24477, 0.38774, 0.24477, 0.06136, 0.24477, 0.06136
     };
 
@@ -41,7 +42,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     float4 color = float4(0.0, 0.0, 0.0, 0.0);
     float totalWeight = 0.0;
 
-    // Vertical blur pass
+
     for (int i = -KERNEL_RADIUS; i <= KERNEL_RADIUS; ++i)
     {
         int2 coord = int2(DTid.xy) + int2(0, i);
@@ -54,6 +55,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
     }
 
-    // Normalize and write the color to the output image
+
     outTexture2D[DTid.xy] = color / totalWeight;
 }
