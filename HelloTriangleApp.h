@@ -224,15 +224,12 @@ private:
     void CreateCommandPool();
     VkFormat FindSupportedFormat(std::vector<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
     VkFormat FindDepthFormat();
-    bool HasStencilComponent(VkFormat format);
     void CreateColorResources();
     void CreateDepthResources();
     void CreateShadowMapResources();
     VkCommandBuffer BeginSingleTimeCommandBuffer();
     void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-    void TransitionImageLayout(VkImage image, VkFormat format, 
-        VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
     void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSample, VkFormat format, VkImageTiling tiling,
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     void CreateTextureImage();
