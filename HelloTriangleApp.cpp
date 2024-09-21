@@ -45,15 +45,19 @@ void HelloTriangleApp::InitVulkan()
     CreateSwapChainImageViews();
     CreateShadowMapRenderPass();
     CreateRenderPass();
+    CreatePostProcessRenderPass();
     CreateShadowMapDescriptorSetLayout();
     CreateDescriptorSetLayout();
+    CreatePostProcessDescriptorSetLayout();
     CreateGraphicsPipeline();
     CreateCommandPool();
     CreateColorResources();
     CreateDepthResources();
     CreateShadowMapResources();
+    CreatePostProcessResources();
     CreateShadowMapFramebuffers();
     CreateFramebuffers();
+    CreatePostProcessFramebuffers();
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
@@ -63,6 +67,7 @@ void HelloTriangleApp::InitVulkan()
     CreateShaderStorageBuffers();
     CreateShadowMapDescriptorPool();
     CreateDescriptorPool();
+    CreatePostProcessDescriptorPool();
     CreateShadowMapDescriptorSets();
     CreateDescriptorSets();
     CreateCommandBuffers();
@@ -215,6 +220,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL ValidationErrorLogger(
 
     if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
     {
+        //if (std::strstr(pCallbackData->pMessage, "VUID-VkWriteDescriptorSet-descriptorType-00337") != nullptr
+        //    || std::strstr(pCallbackData->pMessage, "VUID-VkDescriptorImageInfo-imageLayout-00344") != nullptr
+        //    || std::strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout") != nullptr
+        //    || std::strstr(pCallbackData->pMessage, "VUID-VkPresentInfoKHR-pImageIndices-01430") != nullptr)
+        //{
+        //    return VK_FALSE;
+        //}
         std::cerr << RED_TEXT << "validation layer: " << pCallbackData->pMessage << "\n" << std::endl;
     }
     else
@@ -709,12 +721,12 @@ void HelloTriangleApp::CreateRenderPass()
     colorAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    //colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+    //colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference colorAttachment{};
     colorAttachment.attachment = 0;
     colorAttachment.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    //colorAttachment.layout = VK_IMAGE_LAYOUT_GENERAL;
+    //colorAttachment.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentDescription depthAttachmentDescr{};
     depthAttachmentDescr.format = FindDepthFormat();
@@ -775,6 +787,52 @@ void HelloTriangleApp::CreateRenderPass()
     renderPassCreateInfo.pDependencies = &subpassDependency;
 
     if (vkCreateRenderPass(gfxCtx->logicalDevice, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("Error creating renderpass!");
+    }
+}
+
+void HelloTriangleApp::CreatePostProcessRenderPass()
+{
+    VkAttachmentDescription colorAttachmentDescr{};
+    colorAttachmentDescr.format = swapChainImageFormat;
+    colorAttachmentDescr.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference colorAttachment{};
+    colorAttachment.attachment = 0;
+    colorAttachment.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpassDescr{};
+    subpassDescr.colorAttachmentCount = 1;
+    subpassDescr.pColorAttachments = &colorAttachment;
+
+    VkSubpassDependency subpassDependency{};
+    subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpassDependency.dstSubpass = 0;
+    subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    subpassDependency.srcAccessMask = 0;
+    subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    std::array<VkAttachmentDescription, 1> attachments = { colorAttachmentDescr };
+    VkRenderPassCreateInfo renderPassCreateInfo{};
+    renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    renderPassCreateInfo.pAttachments = attachments.data();
+    renderPassCreateInfo.subpassCount = 1;
+    renderPassCreateInfo.pSubpasses = &subpassDescr;
+    renderPassCreateInfo.dependencyCount = 1;
+    renderPassCreateInfo.pDependencies = &subpassDependency;
+
+    if (vkCreateRenderPass(gfxCtx->logicalDevice, &renderPassCreateInfo, nullptr, &postProcessRenderPass) != VK_SUCCESS)
     {
         throw std::runtime_error("Error creating renderpass!");
     }
@@ -879,6 +937,43 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
 #endif //#if COMPUTE_FEATURE
 }
 
+void HelloTriangleApp::CreatePostProcessDescriptorSetLayout()
+{
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+    samplerLayoutBinding.binding = 1;
+    samplerLayoutBinding.descriptorCount = 1;
+    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    samplerLayoutBinding.pImmutableSamplers = nullptr;
+    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutBinding sampledImageLayoutBinding{};
+    sampledImageLayoutBinding.binding = 2;
+    sampledImageLayoutBinding.descriptorCount = 1;
+    sampledImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    sampledImageLayoutBinding.pImmutableSamplers = nullptr;
+    sampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 3> bindings = { uboLayoutBinding,
+        samplerLayoutBinding, sampledImageLayoutBinding };
+    VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
+    descriptorSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    descriptorSetCreateInfo.pBindings = bindings.data();
+
+    if (vkCreateDescriptorSetLayout(gfxCtx->logicalDevice, &descriptorSetCreateInfo,
+        nullptr, &postProcessDescriptorSetLayout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating descriptor set layout!");
+    }
+}
+
 void HelloTriangleApp::CreateGraphicsPipeline()
 {
     inputHandler.CompileShaders();
@@ -947,6 +1042,39 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     shadowMapGraphicPipelineInfo.viewportExtent = swapChainExtent;
 
     CreateGraphicsPipeline_Internal(shadowMapGraphicPipelineInfo, shadowMapPipelineLayout, shadowMapPipeline);
+
+    //Post process present pipeline
+    std::vector<char> postProcessPresentVertexShader = ReadFile("CompiledShaders/postProcessPresentVert.spv");
+    std::vector<char> postProcessPresentFragmentShader = ReadFile("CompiledShaders/PostProcessPresentFrag.spv");
+
+    VkShaderModule postProcessPresentVertexShaderModule = CreateShaderModule(postProcessPresentVertexShader);
+    VkShaderModule postProcessPresentFragmentShaderModule = CreateShaderModule(postProcessPresentFragmentShader);
+
+    VkPipelineShaderStageCreateInfo postProcessPresentVertexPipelineCreateInfo{};
+    postProcessPresentVertexPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    postProcessPresentVertexPipelineCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    postProcessPresentVertexPipelineCreateInfo.module = postProcessPresentVertexShaderModule;
+    postProcessPresentVertexPipelineCreateInfo.pName = "VSMain";
+    postProcessPresentVertexPipelineCreateInfo.pSpecializationInfo = nullptr;
+
+    VkPipelineShaderStageCreateInfo postProcessPresentFragmentPipelineCreateInfo{};
+    postProcessPresentFragmentPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    postProcessPresentFragmentPipelineCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    postProcessPresentFragmentPipelineCreateInfo.module = postProcessPresentFragmentShaderModule;
+    postProcessPresentFragmentPipelineCreateInfo.pName = "PSMain";
+    postProcessPresentFragmentPipelineCreateInfo.pSpecializationInfo = nullptr;
+
+    std::vector<VkPipelineShaderStageCreateInfo>  postProcessPresentShaderStages{ postProcessPresentVertexPipelineCreateInfo,
+        postProcessPresentFragmentPipelineCreateInfo };
+
+    GraphicsPipelineInfo postProcessPresentGraphicPipelineInfo{};
+    postProcessPresentGraphicPipelineInfo.descriptorSetLayout = postProcessDescriptorSetLayout;
+    postProcessPresentGraphicPipelineInfo.shaderStages = postProcessPresentShaderStages;
+    postProcessPresentGraphicPipelineInfo.renderPass = postProcessRenderPass;
+    postProcessPresentGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+    postProcessPresentGraphicPipelineInfo.viewportExtent = swapChainExtent;
+
+    CreateGraphicsPipeline_Internal(postProcessPresentGraphicPipelineInfo, postProcessPipelineLayout, postProcessPipeline);
 
    /*/ std::vector<char> brdfFragmentShader = ReadFile("CompiledShaders/brdfFrag.spv");
 
@@ -1018,7 +1146,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 void HelloTriangleApp::CreateShadowMapFramebuffers()
 {
     shadowMapFramebuffers.resize(swapChainImageViews.size());
-    for (int i = 0; i < swapChainImageViews.size(); ++i)
+    for (int i = 0; i < shadowMapFramebuffers.size(); ++i)
     {
         std::array<VkImageView, 1> attachments
         {
@@ -1064,6 +1192,32 @@ void HelloTriangleApp::CreateFramebuffers()
 
         if (vkCreateFramebuffer(gfxCtx->logicalDevice, &framebufferCreateInfo, nullptr, &swapchainFramebuffers[i]) != VK_SUCCESS) 
         {   
+            throw std::runtime_error("Error creating framebuffer!");
+        }
+    }
+}
+
+void HelloTriangleApp::CreatePostProcessFramebuffers()
+{
+    postProcessFramebuffers.resize(swapChainImageViews.size());
+    for (int i = 0; i < postProcessFramebuffers.size(); ++i)
+    {
+        std::array<VkImageView, 1> attachments
+        {
+            postProcessImageView
+        };
+
+        VkFramebufferCreateInfo framebufferCreateInfo{};
+        framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferCreateInfo.renderPass = postProcessRenderPass;
+        framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        framebufferCreateInfo.pAttachments = attachments.data();
+        framebufferCreateInfo.width = swapChainExtent.width;
+        framebufferCreateInfo.height = swapChainExtent.height;
+        framebufferCreateInfo.layers = 1;
+
+        if (vkCreateFramebuffer(gfxCtx->logicalDevice, &framebufferCreateInfo, nullptr, &postProcessFramebuffers[i]) != VK_SUCCESS)
+        {
             throw std::runtime_error("Error creating framebuffer!");
         }
     }
@@ -1130,7 +1284,7 @@ void HelloTriangleApp::CreateColorResources()
     VkFormat colorFormat = swapChainImageFormat;
     CreateImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, 
         colorFormat, VK_IMAGE_TILING_OPTIMAL, 
-        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 
+        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         colorImage, colorImageMemory);
     colorImageView = CreateImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -1174,6 +1328,17 @@ void HelloTriangleApp::CreateShadowMapResources()
 
     TransitionImageLayout(dirShadowMapDepthImage, depthFormat,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+}
+
+void HelloTriangleApp::CreatePostProcessResources()
+{
+    VkFormat colorFormat = swapChainImageFormat;
+    CreateImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT,
+        colorFormat, VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        postProcessImage, postProcessImageMemory);
+    postProcessImageView = CreateImageView(postProcessImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
 VkCommandBuffer HelloTriangleApp::BeginSingleTimeCommandBuffer()
@@ -1573,6 +1738,30 @@ void HelloTriangleApp::CreateDescriptorPool()
 #endif//#if COMPUTE_FEATURE
 }
 
+void HelloTriangleApp::CreatePostProcessDescriptorPool()
+{
+//postProcessDescriptorPool
+    std::array<VkDescriptorPoolSize, 3> descriptorPoolSize;
+    descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+    descriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorPoolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    descriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
+    descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSize.size());
+    descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSize.data();
+    descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    if (vkCreateDescriptorPool(gfxCtx->logicalDevice, &descriptorPoolCreateInfo,
+        nullptr, &postProcessDescriptorPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating descriptor pool!");
+    }
+}
+
 void HelloTriangleApp::CreateShadowMapDescriptorSets()
 {
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, shadowMapDescriptorSetLayout);
@@ -1700,58 +1889,69 @@ void HelloTriangleApp::CreateDescriptorSets()
 
         vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
             writeDescriptorSet.data(), 0, nullptr);
+    }
+}
 
-#if COMPUTE_FEATURE
+void HelloTriangleApp::UpdatePostProcessDescriptorSets()
+{
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, postProcessDescriptorSetLayout);
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+    descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    descriptorSetAllocateInfo.descriptorPool = postProcessDescriptorPool;
+    descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
-        //VkDescriptorBufferInfo storageBufferInfoLastFrame{};
-        //storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(1-i) % MAX_FRAMES_IN_FLIGHT];
-        //storageBufferInfoLastFrame.offset = 0;
-        //storageBufferInfoLastFrame.range = sizeof(TestComputeClass) * OBJECT_COUNT;
+    postProcessDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(gfxCtx->logicalDevice, &descriptorSetAllocateInfo,
+        postProcessDescriptorSets.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error allocating descriptor sets!");
+    }
 
-        //VkDescriptorBufferInfo storageBufferInfoCurrentFrame{};
-        //storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i];
-        //storageBufferInfoCurrentFrame.offset = 0;
-        //storageBufferInfoCurrentFrame.range = sizeof(TestComputeClass) * OBJECT_COUNT;
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
 
-        VkDescriptorImageInfo inputSceneImage{};
-        inputSceneImage.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-        inputSceneImage.imageView = swapChainImageViews[i];
-        inputSceneImage.sampler = textureSampler;
+        std::array<VkWriteDescriptorSet, 3> writeDescriptorSet{};
+        writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[0].dstSet = postProcessDescriptorSets[i];
+        writeDescriptorSet[0].dstBinding = 0;
+        writeDescriptorSet[0].dstArrayElement = 0;
+        writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet[0].descriptorCount = 1;
+        writeDescriptorSet[0].pBufferInfo = &bufferInfo;
 
-        VkDescriptorImageInfo outputSceneImage{};
-        outputSceneImage.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-        outputSceneImage.imageView = blurImageView;
-        
-        std::array<VkWriteDescriptorSet, 3> computeWriteDescriptorSet{};
-        computeWriteDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        computeWriteDescriptorSet[0].dstSet = computeDescriptorSets[i];
-        computeWriteDescriptorSet[0].dstBinding = 0;
-        computeWriteDescriptorSet[0].dstArrayElement = 0;
-        computeWriteDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        computeWriteDescriptorSet[0].descriptorCount = 1;
-        computeWriteDescriptorSet[0].pBufferInfo = &bufferInfo;
+        VkDescriptorImageInfo samplerInfo{};
+        samplerInfo.sampler = textureSampler;
+        samplerInfo.imageView = nullptr;
+        samplerInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        computeWriteDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        computeWriteDescriptorSet[1].dstSet = computeDescriptorSets[i];
-        computeWriteDescriptorSet[1].dstBinding = 1;
-        computeWriteDescriptorSet[1].dstArrayElement = 0;
-        computeWriteDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        computeWriteDescriptorSet[1].descriptorCount = 1;
-        computeWriteDescriptorSet[1].pImageInfo = &inputSceneImage;
+        writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[1].dstSet = postProcessDescriptorSets[i];
+        writeDescriptorSet[1].dstBinding = 1;
+        writeDescriptorSet[1].dstArrayElement = 0;
+        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        writeDescriptorSet[1].descriptorCount = 1;
+        writeDescriptorSet[1].pImageInfo = &samplerInfo;
 
-        computeWriteDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        computeWriteDescriptorSet[2].dstSet = computeDescriptorSets[i];
-        computeWriteDescriptorSet[2].dstBinding = 2;
-        computeWriteDescriptorSet[2].dstArrayElement = 0;
-        computeWriteDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        computeWriteDescriptorSet[2].descriptorCount = 1;
-        computeWriteDescriptorSet[2].pImageInfo = &outputSceneImage;
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageView = postProcessImageView;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.sampler = nullptr;
 
-        vkUpdateDescriptorSets(gfxCtx->logicalDevice, 
-            computeWriteDescriptorSet.size(), computeWriteDescriptorSet.data(),
-            0, nullptr);
+        writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[2].dstSet = postProcessDescriptorSets[i];
+        writeDescriptorSet[2].dstBinding = 2;
+        writeDescriptorSet[2].dstArrayElement = 0;
+        writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[2].descriptorCount = 1;
+        writeDescriptorSet[2].pImageInfo = &imageInfo;
 
-#endif//#if COMPUTE_FEATURE
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
+            writeDescriptorSet.data(), 0, nullptr);
     }
 }
 
@@ -1834,6 +2034,56 @@ void HelloTriangleApp::UpdateDescriptorSets()
 
         vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
             writeDescriptorSet.data(), 0, nullptr);
+    }
+}
+
+void HelloTriangleApp::UpdateComputeDescriptorSets()
+{
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        VkDescriptorImageInfo inputSceneImage{};
+        inputSceneImage.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        //inputSceneImage.imageView = colorImageView;
+        inputSceneImage.imageView = swapChainImageViews[(i + 1) % MAX_FRAMES_IN_FLIGHT];
+        inputSceneImage.sampler = nullptr;
+
+        VkDescriptorImageInfo outputSceneImage{};
+        outputSceneImage.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        outputSceneImage.imageView = blurImageView;
+
+        std::array<VkWriteDescriptorSet, 3> computeWriteDescriptorSet{};
+        computeWriteDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        computeWriteDescriptorSet[0].dstSet = computeDescriptorSets[i];
+        computeWriteDescriptorSet[0].dstBinding = 0;
+        computeWriteDescriptorSet[0].dstArrayElement = 0;
+        computeWriteDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        computeWriteDescriptorSet[0].descriptorCount = 1;
+        computeWriteDescriptorSet[0].pBufferInfo = &bufferInfo;
+
+        computeWriteDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        computeWriteDescriptorSet[1].dstSet = computeDescriptorSets[i];
+        computeWriteDescriptorSet[1].dstBinding = 1;
+        computeWriteDescriptorSet[1].dstArrayElement = 0;
+        computeWriteDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        computeWriteDescriptorSet[1].descriptorCount = 1;
+        computeWriteDescriptorSet[1].pImageInfo = &inputSceneImage;
+
+        computeWriteDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        computeWriteDescriptorSet[2].dstSet = computeDescriptorSets[i];
+        computeWriteDescriptorSet[2].dstBinding = 2;
+        computeWriteDescriptorSet[2].dstArrayElement = 0;
+        computeWriteDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        computeWriteDescriptorSet[2].descriptorCount = 1;
+        computeWriteDescriptorSet[2].pImageInfo = &outputSceneImage;
+
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice,
+            computeWriteDescriptorSet.size(), computeWriteDescriptorSet.data(),
+            0, nullptr);
     }
 }
 
@@ -2047,14 +2297,55 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdEndRenderPass(commandBuffer);
 
+    //TransitionImageLayout(colorImage, swapChainImageFormat,
+    //    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, true,commandBuffer);
+        
+    TransitionImageLayout(swapChainImages[(imageIndex + 1) % MAX_FRAMES_IN_FLIGHT], swapChainImageFormat,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, true,commandBuffer);
+
     //Compute Blur
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+    UpdateComputeDescriptorSets();
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
         computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
 
     unsigned int groupCountX = (swapChainExtent.width + 15) / 16;
     unsigned int groupCountY = (swapChainExtent.height + 15) / 16;
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
+
+    // Begin the render pass
+    //VkRenderPassBeginInfo renderPassInfo = {};
+    //renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    //renderPassInfo.renderPass = postProcessRenderPass;
+    //renderPassInfo.framebuffer = postProcessFramebuffers[imageIndex];
+    //renderPassInfo.renderArea.offset = { 0, 0 };
+    //renderPassInfo.renderArea.extent = swapChainExtent;
+
+    //VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+    //renderPassInfo.clearValueCount = 1;
+    //renderPassInfo.pClearValues = &clearColor;
+
+    //vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    //// Bind the graphics pipeline for post-processing
+    //vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipeline);
+    
+    //UpdatePostProcessDescriptorSets();
+
+    //// Bind descriptor sets (for screen texture)
+    //vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipelineLayout, 0, 1, &postProcessDescriptorSets[imageIndex], 0, nullptr);
+
+    //// Issue a draw call for the full-screen quad
+    //// Parameters:
+    ////   vertexCount: 3 (since we are using a triangle)
+    ////   instanceCount: 1 (no instancing)
+    ////   firstVertex: 0 (starting from the first generated vertex)
+    ////   firstInstance: 0 (no instancing, so it starts from the first instance)
+    //vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+    //// End the render pass
+    //vkCmdEndRenderPass(commandBuffer);
+
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) 
     {

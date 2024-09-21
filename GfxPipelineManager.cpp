@@ -58,9 +58,13 @@ bool HasStencilComponent(VkFormat format)
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels)
+void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, bool transitionToCompute, VkCommandBuffer commandBuffer)
 {
-    VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer_Internal();
+    VkCommandBuffer currentCommandBuffer = commandBuffer;
+    if(!currentCommandBuffer)
+    {
+        currentCommandBuffer = BeginSingleTimeCommandBuffer_Internal();
+    }
 
     VkImageMemoryBarrier imageMemoryBarrier{};
     imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -108,6 +112,15 @@ void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayo
         srcStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
         dstStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     }
+    else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL &&
+        newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    {
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        srcStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dstStageFlags = transitionToCompute ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
     else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
         newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
     {
@@ -150,7 +163,7 @@ void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayo
         throw std::runtime_error("Unsupported layout transition!");
     }
 
-    vkCmdPipelineBarrier(commandBuffer,
+    vkCmdPipelineBarrier(currentCommandBuffer,
         srcStageFlags,
         dstStageFlags,
         0,
@@ -158,7 +171,10 @@ void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayo
         0, nullptr,
         1, &imageMemoryBarrier);
 
-    EndSingleTimeCommandBuffer_Internal(commandBuffer);
+    if(!commandBuffer)
+    {
+        EndSingleTimeCommandBuffer_Internal(currentCommandBuffer);
+    }
 }
 
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,

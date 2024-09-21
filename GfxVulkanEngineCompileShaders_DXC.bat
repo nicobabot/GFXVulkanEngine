@@ -15,6 +15,14 @@ C:\DXC\bin\x64\dxc.exe -spirv -Zi -O3 Shaders/PreprocessedShaders/shadowMapFragm
 copy "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\CompiledShaders\shadowMapVert.spv" "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"
 copy "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\CompiledShaders\shadowMapFrag.spv" "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"
 
+C:\DXC\bin\x64\dxc.exe -P -Fi Shaders/PreprocessedShaders/postProcessPresent_preprocessed.hlsl Shaders/postProcessPresent.hlsl
+C:\DXC\bin\x64\dxc.exe -spirv -Zi -O3 Shaders/PreprocessedShaders/postProcessPresent_preprocessed.hlsl -T vs_6_2 -E VSMain -Fo CompiledShaders/postProcessPresentVert.spv
+C:\DXC\bin\x64\dxc.exe -P -Fi Shaders/PreprocessedShaders/postProcessPresent_preprocessed.hlsl Shaders/postProcessPresent.hlsl 
+C:\DXC\bin\x64\dxc.exe -spirv -Zi -O3 Shaders/PreprocessedShaders/postProcessPresent_preprocessed.hlsl -T ps_6_2 -E PSMain -Fo CompiledShaders/postProcessPresentFrag.spv
+copy "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\CompiledShaders\postProcessPresent.spv" "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"
+copy "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\CompiledShaders\postProcessPresent.spv" "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"
+
+
 C:\DXC\bin\x64\dxc.exe -P -Fi Shaders/PreprocessedShaders/cs_blur_preprocessed.hlsl Shaders/cs_blur.hlsl
 C:\DXC\bin\x64\dxc.exe -T cs_6_0 -E main -spirv -Fo CompiledShaders/cs_blur.spv -Zi -O3 Shaders/PreprocessedShaders/cs_blur_preprocessed.hlsl
 copy "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\CompiledShaders\cs_blur.spv" "C:\Users\nicob\source\repos\GFXVulkanEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"

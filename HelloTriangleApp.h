@@ -95,9 +95,11 @@ private:
 
     VkRenderPass shadowMapRenderPass;
     VkRenderPass renderPass;
+    VkRenderPass postProcessRenderPass;
 
     VkDescriptorSetLayout shadowMapDescriptorSetLayout;
     VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorSetLayout postProcessDescriptorSetLayout;
     VkDescriptorSetLayout computeDescriptorSetLayout;
 
     VkPipelineLayout shadowMapPipelineLayout;
@@ -106,6 +108,9 @@ private:
     VkPipelineLayout graphicsPipelineLayout;
     VkPipeline graphicsPipeline;
 
+    VkPipelineLayout postProcessPipelineLayout;
+    VkPipeline postProcessPipeline;
+
     VkPipelineLayout brdfPipelineLayout;
     VkPipeline brdfPipeline;
 
@@ -113,6 +118,7 @@ private:
     VkPipeline computePipeline;
     std::vector<VkFramebuffer> shadowMapFramebuffers;
     std::vector<VkFramebuffer> swapchainFramebuffers;
+    std::vector<VkFramebuffer> postProcessFramebuffers;
 
     VkCommandPool computeCommandPool;
 
@@ -145,6 +151,11 @@ private:
     VkDeviceMemory blurImageMemory;
     VkImageView blurImageView;
 
+    //PostProcess present
+    VkImage postProcessImage;
+    VkDeviceMemory postProcessImageMemory;
+    VkImageView postProcessImageView;
+
     //TODO: store vertex + index in the same buffer for memory aliasing
     //https://developer.nvidia.com/vulkan-memory-management 
 
@@ -159,10 +170,12 @@ private:
     VkDescriptorPool shadowMapDescriptorPool;
     VkDescriptorPool descriptorPool;
     VkDescriptorPool computeDescriptorPool;
+    VkDescriptorPool postProcessDescriptorPool;
 
     std::vector<VkDescriptorSet> shadowMapDescriptorSets;
     std::vector<VkDescriptorSet> descriptorSets;
     std::vector<VkDescriptorSet> computeDescriptorSets;
+    std::vector<VkDescriptorSet> postProcessDescriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkCommandBuffer> computeCommandBuffers;
@@ -211,22 +224,29 @@ private:
     void CreateSwapChainImageViews();
     void CreateShadowMapRenderPass();
     void CreateRenderPass();
+    void CreatePostProcessRenderPass();
     void CreateShadowMapDescriptorSetLayout();
     void CreateDescriptorSetLayout();
+    void CreatePostProcessDescriptorSetLayout();
     void CreateShadowMapDescriptorPool();
     void CreateDescriptorPool();
+    void CreatePostProcessDescriptorPool();
     void CreateShadowMapDescriptorSets();
     void CreateDescriptorSets();
+    void UpdatePostProcessDescriptorSets();
     void UpdateDescriptorSets();
+    void UpdateComputeDescriptorSets();
     void CreateGraphicsPipeline();
     void CreateShadowMapFramebuffers();
     void CreateFramebuffers();
+    void CreatePostProcessFramebuffers();
     void CreateCommandPool();
     VkFormat FindSupportedFormat(std::vector<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
     VkFormat FindDepthFormat();
     void CreateColorResources();
     void CreateDepthResources();
     void CreateShadowMapResources();
+    void CreatePostProcessResources();
     VkCommandBuffer BeginSingleTimeCommandBuffer();
     void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);

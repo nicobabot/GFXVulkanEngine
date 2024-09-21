@@ -22,7 +22,7 @@ uint32_t FindMemoryType_Internal(uint32_t typeFilter, VkMemoryPropertyFlags memo
 bool HasStencilComponent(VkFormat format);
 
 void TransitionImageLayout(VkImage image, VkFormat format,
-	VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
+	VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, bool transitionToCompute = false, VkCommandBuffer commandBuffer = nullptr);
 
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
 	VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline);
