@@ -70,9 +70,11 @@ void HelloTriangleApp::InitVulkan()
     CreatePostProcessDescriptorPool();
     CreateShadowMapDescriptorSets();
     CreateDescriptorSets();
+    CreatePostProcessDescriptorSets();
     CreateCommandBuffers();
     CreateSyncObjects();
     SetDescriptorsToObjects();
+    UpdateComputeDescriptorSets();
     inputHandler.Init();
 }
 
@@ -220,13 +222,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL ValidationErrorLogger(
 
     if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
     {
-        //if (std::strstr(pCallbackData->pMessage, "VUID-VkWriteDescriptorSet-descriptorType-00337") != nullptr
-        //    || std::strstr(pCallbackData->pMessage, "VUID-VkDescriptorImageInfo-imageLayout-00344") != nullptr
-        //    || std::strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout") != nullptr
-        //    || std::strstr(pCallbackData->pMessage, "VUID-VkPresentInfoKHR-pImageIndices-01430") != nullptr)
-        //{
-        //    return VK_FALSE;
-        //}
+        if (std::strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout") != nullptr)
+        {
+            return VK_FALSE;
+        }
         std::cerr << RED_TEXT << "validation layer: " << pCallbackData->pMessage << "\n" << std::endl;
     }
     else
@@ -749,14 +748,14 @@ void HelloTriangleApp::CreateRenderPass()
     colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     //colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+    colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference colorResolveReference{};
     colorResolveReference.attachment = 2;
-    //colorResolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorResolveReference.layout = VK_IMAGE_LAYOUT_GENERAL;
+    colorResolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    //colorResolveReference.layout = VK_IMAGE_LAYOUT_GENERAL;
 
     VkSubpassDescription subpassDescr{};
     subpassDescr.colorAttachmentCount = 1;
@@ -801,8 +800,8 @@ void HelloTriangleApp::CreatePostProcessRenderPass()
     colorAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     VkAttachmentReference colorAttachment{};
     colorAttachment.attachment = 0;
@@ -1178,7 +1177,7 @@ void HelloTriangleApp::CreateFramebuffers()
         {
             colorImageView,
             depthImageView,
-            swapChainImageViews[i],
+            resolveColorImageView,
         };
 
         VkFramebufferCreateInfo framebufferCreateInfo{};
@@ -1204,7 +1203,7 @@ void HelloTriangleApp::CreatePostProcessFramebuffers()
     {
         std::array<VkImageView, 1> attachments
         {
-            postProcessImageView
+            swapChainImageViews[i]
         };
 
         VkFramebufferCreateInfo framebufferCreateInfo{};
@@ -1289,6 +1288,16 @@ void HelloTriangleApp::CreateColorResources()
         colorImage, colorImageMemory);
     colorImageView = CreateImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
+    CreateImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT,
+        colorFormat, VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        resolveColorImage, resolveColorImageMemory);
+    resolveColorImageView = CreateImageView(resolveColorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+    //TransitionImageLayout(resolveColorImage, swapChainImageFormat,
+    //    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, false);
+
     VkFormat blurImageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     CreateImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT,
         blurImageFormat, VK_IMAGE_TILING_LINEAR,
@@ -1335,7 +1344,7 @@ void HelloTriangleApp::CreatePostProcessResources()
     VkFormat colorFormat = swapChainImageFormat;
     CreateImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT,
         colorFormat, VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         postProcessImage, postProcessImageMemory);
     postProcessImageView = CreateImageView(postProcessImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -1892,7 +1901,7 @@ void HelloTriangleApp::CreateDescriptorSets()
     }
 }
 
-void HelloTriangleApp::UpdatePostProcessDescriptorSets()
+void HelloTriangleApp::CreatePostProcessDescriptorSets()
 {
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, postProcessDescriptorSetLayout);
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
@@ -1907,6 +1916,13 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
     {
         throw std::runtime_error("Error allocating descriptor sets!");
     }
+
+    UpdatePostProcessDescriptorSets();
+}
+
+void HelloTriangleApp::UpdatePostProcessDescriptorSets()
+{
+    
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
@@ -1938,7 +1954,7 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
         writeDescriptorSet[1].pImageInfo = &samplerInfo;
 
         VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageView = postProcessImageView;
+        imageInfo.imageView = blurImageView;
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         imageInfo.sampler = nullptr;
 
@@ -2048,8 +2064,8 @@ void HelloTriangleApp::UpdateComputeDescriptorSets()
 
         VkDescriptorImageInfo inputSceneImage{};
         inputSceneImage.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        //inputSceneImage.imageView = colorImageView;
-        inputSceneImage.imageView = swapChainImageViews[(i + 1) % MAX_FRAMES_IN_FLIGHT];
+        inputSceneImage.imageView = resolveColorImageView;
+        //inputSceneImage.imageView = swapChainImageViews[(i + 1) % MAX_FRAMES_IN_FLIGHT];
         inputSceneImage.sampler = nullptr;
 
         VkDescriptorImageInfo outputSceneImage{};
@@ -2297,15 +2313,15 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdEndRenderPass(commandBuffer);
 
-    //TransitionImageLayout(colorImage, swapChainImageFormat,
+    //TransitionImageLayout(resolveColorImage, swapChainImageFormat,
     //    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, true,commandBuffer);
         
-    TransitionImageLayout(swapChainImages[(imageIndex + 1) % MAX_FRAMES_IN_FLIGHT], swapChainImageFormat,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, true,commandBuffer);
+    //TransitionImageLayout(swapChainImages[(imageIndex + 1) % MAX_FRAMES_IN_FLIGHT], swapChainImageFormat,
+    //    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, true,commandBuffer);
 
     //Compute Blur
+    //UpdateComputeDescriptorSets();
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-    UpdateComputeDescriptorSets();
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
         computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
 
@@ -2313,38 +2329,42 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     unsigned int groupCountY = (swapChainExtent.height + 15) / 16;
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
 
+    TransitionImageLayout(blurImage, swapChainImageFormat,
+    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, false,commandBuffer);
+
     // Begin the render pass
-    //VkRenderPassBeginInfo renderPassInfo = {};
-    //renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    //renderPassInfo.renderPass = postProcessRenderPass;
-    //renderPassInfo.framebuffer = postProcessFramebuffers[imageIndex];
-    //renderPassInfo.renderArea.offset = { 0, 0 };
-    //renderPassInfo.renderArea.extent = swapChainExtent;
+    VkRenderPassBeginInfo renderPassInfo = {};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = postProcessRenderPass;
+    renderPassInfo.framebuffer = postProcessFramebuffers[imageIndex];
+    renderPassInfo.renderArea.offset = { 0, 0 };
+    renderPassInfo.renderArea.extent = swapChainExtent;
 
-    //VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-    //renderPassInfo.clearValueCount = 1;
-    //renderPassInfo.pClearValues = &clearColor;
+    VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+    renderPassInfo.clearValueCount = 1;
+    renderPassInfo.pClearValues = &clearColor;
 
-    //vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    //// Bind the graphics pipeline for post-processing
-    //vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipeline);
+    // Bind the graphics pipeline for post-processing
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipeline);
     
     //UpdatePostProcessDescriptorSets();
 
-    //// Bind descriptor sets (for screen texture)
-    //vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipelineLayout, 0, 1, &postProcessDescriptorSets[imageIndex], 0, nullptr);
+    // Bind descriptor sets (for screen texture)
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        postProcessPipelineLayout, 0, 1, &postProcessDescriptorSets[currentFrame], 0, nullptr);
 
-    //// Issue a draw call for the full-screen quad
-    //// Parameters:
-    ////   vertexCount: 3 (since we are using a triangle)
-    ////   instanceCount: 1 (no instancing)
-    ////   firstVertex: 0 (starting from the first generated vertex)
-    ////   firstInstance: 0 (no instancing, so it starts from the first instance)
-    //vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    // Issue a draw call for the full-screen quad
+    // Parameters:
+    //   vertexCount: 3 (since we are using a triangle)
+    //   instanceCount: 1 (no instancing)
+    //   firstVertex: 0 (starting from the first generated vertex)
+    //   firstInstance: 0 (no instancing, so it starts from the first instance)
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
-    //// End the render pass
-    //vkCmdEndRenderPass(commandBuffer);
+    // End the render pass
+    vkCmdEndRenderPass(commandBuffer);
 
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) 
@@ -2533,6 +2553,8 @@ void HelloTriangleApp::RecreateSwapChain()
     CreateShadowMapFramebuffers();
     CreateFramebuffers();
     UpdateDescriptorSets();
+    UpdateComputeDescriptorSets();
+    UpdatePostProcessDescriptorSets();
 }
 
 void HelloTriangleApp::CleanupSwapChain()

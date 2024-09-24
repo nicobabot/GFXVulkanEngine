@@ -146,6 +146,10 @@ private:
     VkDeviceMemory colorImageMemory;
     VkImageView colorImageView;
 
+    VkImage resolveColorImage;
+    VkDeviceMemory resolveColorImageMemory;
+    VkImageView resolveColorImageView;
+
     //Blur
     VkImage blurImage;
     VkDeviceMemory blurImageMemory;
@@ -233,6 +237,7 @@ private:
     void CreatePostProcessDescriptorPool();
     void CreateShadowMapDescriptorSets();
     void CreateDescriptorSets();
+    void CreatePostProcessDescriptorSets();
     void UpdatePostProcessDescriptorSets();
     void UpdateDescriptorSets();
     void UpdateComputeDescriptorSets();
