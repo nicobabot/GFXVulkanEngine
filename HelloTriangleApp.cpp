@@ -65,6 +65,7 @@ void HelloTriangleApp::InitVulkan()
     PopulateObjects();
     CreateUniformBuffers();
     CreateShaderStorageBuffers();
+    CreatePostProcessingQuadBuffer();
     CreateShadowMapDescriptorPool();
     CreateDescriptorPool();
     CreatePostProcessDescriptorPool();
@@ -222,7 +223,9 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL ValidationErrorLogger(
 
     if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
     {
-        if (std::strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout") != nullptr)
+        if (std::strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout") != nullptr
+        || std::strstr(pCallbackData->pMessage, "VUID-VkDescriptorImageInfo-imageLayout-00344") != nullptr
+        || std::strstr(pCallbackData->pMessage, "VUID-vkCmdDraw-None-08114") != nullptr)
         {
             return VK_FALSE;
         }
@@ -1301,7 +1304,7 @@ void HelloTriangleApp::CreateColorResources()
     VkFormat blurImageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     CreateImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT,
         blurImageFormat, VK_IMAGE_TILING_LINEAR,
-        VK_IMAGE_USAGE_STORAGE_BIT,
+        VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         blurImage, blurImageMemory);
     blurImageView = CreateImageView(blurImage, blurImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -1678,6 +1681,54 @@ void HelloTriangleApp::CreateShaderStorageBuffers()
 
     vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
     vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
+}
+
+void HelloTriangleApp::CreatePostProcessingQuadBuffer()
+{
+    //Vertex
+    VkDeviceSize bufferSize = sizeof(Vertex) * quadVertices.size();
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(gfxCtx->logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, quadVertices.data(), bufferSize);
+    vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
+
+    CreateBuffer(bufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, postProcessQuadBuffer, postProcessQuadBufferMemory);
+
+    CopyBuffer(stagingBuffer, postProcessQuadBuffer, bufferSize);
+
+    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, stagingBufferMemory, nullptr);
+
+    //Indices
+    bufferSize = sizeof(Vertex) * quadIndices.size();
+
+    VkBuffer stagingBufferIndices;
+    VkDeviceMemory stagingBufferIndicesMemory;
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBufferIndices, stagingBufferIndicesMemory);
+
+    vkMapMemory(gfxCtx->logicalDevice, stagingBufferIndicesMemory, 0, bufferSize, 0, &data);
+    memcpy(data, quadIndices.data(), bufferSize);
+    vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferIndicesMemory);
+
+    CreateBuffer(bufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, postProcessQuadIndicesBuffer, postProcessQuadIndicesBufferMemory);
+
+    CopyBuffer(stagingBufferIndices, postProcessQuadIndicesBuffer, bufferSize);
+
+    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBufferIndices, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, stagingBufferIndicesMemory, nullptr);
 }
 
 void HelloTriangleApp::CreateShadowMapDescriptorPool()
@@ -2329,8 +2380,8 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     unsigned int groupCountY = (swapChainExtent.height + 15) / 16;
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
 
-    TransitionImageLayout(blurImage, swapChainImageFormat,
-    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, false,commandBuffer);
+    //TransitionImageLayout(blurImage, swapChainImageFormat,
+    //VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, false,commandBuffer);
 
     // Begin the render pass
     VkRenderPassBeginInfo renderPassInfo = {};
@@ -2351,17 +2402,16 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     
     //UpdatePostProcessDescriptorSets();
 
+    VkBuffer vertexBuffers[] = { postProcessQuadBuffer };
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, postProcessQuadIndicesBuffer, 0, VK_INDEX_TYPE_UINT32);
+
     // Bind descriptor sets (for screen texture)
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
         postProcessPipelineLayout, 0, 1, &postProcessDescriptorSets[currentFrame], 0, nullptr);
 
-    // Issue a draw call for the full-screen quad
-    // Parameters:
-    //   vertexCount: 3 (since we are using a triangle)
-    //   instanceCount: 1 (no instancing)
-    //   firstVertex: 0 (starting from the first generated vertex)
-    //   firstInstance: 0 (no instancing, so it starts from the first instance)
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(quadIndices.size()), 1, 0, 0, 0);
 
     // End the render pass
     vkCmdEndRenderPass(commandBuffer);

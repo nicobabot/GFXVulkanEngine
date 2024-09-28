@@ -160,6 +160,12 @@ private:
     VkDeviceMemory postProcessImageMemory;
     VkImageView postProcessImageView;
 
+    //PostProcess quad
+    VkBuffer postProcessQuadBuffer;
+    VkDeviceMemory postProcessQuadBufferMemory;
+    VkBuffer postProcessQuadIndicesBuffer;
+    VkDeviceMemory postProcessQuadIndicesBufferMemory;
+
     //TODO: store vertex + index in the same buffer for memory aliasing
     //https://developer.nvidia.com/vulkan-memory-management 
 
@@ -266,6 +272,7 @@ private:
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
     void CreateUniformBuffers();
     void CreateShaderStorageBuffers();
+    void CreatePostProcessingQuadBuffer();
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void CreateCommandBuffers();
     void CreateSyncObjects();

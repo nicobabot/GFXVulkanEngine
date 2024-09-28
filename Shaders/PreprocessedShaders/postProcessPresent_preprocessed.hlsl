@@ -1,7 +1,7 @@
 #line 1 "Shaders/postProcessPresent.hlsl"
 struct VSOutput {
-    float2 uv : TEXCOORD0;
     float4 position : SV_POSITION;
+    float2 texCoord : TEXCOORD;
 };
 
 struct UniformBufferObject
@@ -20,26 +20,19 @@ cbuffer MyConstantBuffer : register(b0)
    UniformBufferObject ubo;
 };
 
-VSOutput VSMain(uint vertexID : SV_VertexID)
+VSOutput VSMain(float3 inPosition : SV_POSITION, float3 inColor : COLOR,
+    float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
 {
     VSOutput output;
-
-
-    float2 positions[3] = {
-        float2(-1.0f, -1.0f),
-        float2(3.0f, -1.0f),
-        float2(-1.0f, 3.0f)
-    };
-
-    output.position = float4(positions[vertexID], 0.0f, 1.0f);
-    output.uv = (positions[vertexID] + 1.0f) * 0.5f;
+    output.position = float4(inPosition, 0.0f, 1.0f);
+    output.texCoord = inTexCoord;
     return output;
 }
 
 SamplerState samplerState : register(s1);
 Texture2D screenTexture : register(t2);
 
-float4 PSMain(float2 uv : TEXCOORD0) : SV_TARGET
+float4 PSMain(float2 texCoord : TEXCOORD) : SV_TARGET
 {
-    return screenTexture.Sample(samplerState, uv);
+    return screenTexture.Sample(samplerState, texCoord);
 }

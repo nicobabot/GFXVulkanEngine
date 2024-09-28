@@ -1,6 +1,6 @@
 struct VSOutput {
-    float2 uv : TEXCOORD0;
-    float4 position : SV_POSITION;
+    float4 position : SV_POSITION;  // Output position in screen space (NDC)
+    float2 texCoord : TEXCOORD;     // Pass UV coordinates to the fragment shader
 };
 
 struct UniformBufferObject
@@ -19,26 +19,19 @@ cbuffer MyConstantBuffer : register(b0)
    UniformBufferObject ubo;
 };
 
-VSOutput VSMain(uint vertexID : SV_VertexID)
+VSOutput VSMain(float3 inPosition : SV_POSITION, float3 inColor : COLOR, 
+    float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
 {
     VSOutput output;
-
-    // Generate a full-screen triangle with 3 vertices (overdraw minimized)
-    float2 positions[3] = {
-        float2(-1.0f, -1.0f),
-        float2(3.0f, -1.0f),
-        float2(-1.0f, 3.0f)
-    };
-
-    output.position = float4(positions[vertexID], 0.0f, 1.0f);
-    output.uv = (positions[vertexID] + 1.0f) * 0.5f;  // Map [-1, 1] -> [0, 1] for UVs
+    output.position = float4(inPosition, 0.0f, 1.0f);  // Convert to 4D vector (NDC space)
+    output.texCoord = inTexCoord;  // Pass texture coordinates
     return output;
 }
 
 SamplerState samplerState : register(s1);  // Sampler for the texture
 Texture2D screenTexture : register(t2);  // Input texture (screen texture)
 
-float4 PSMain(float2 uv : TEXCOORD0) : SV_TARGET
+float4 PSMain(float2 texCoord : TEXCOORD) : SV_TARGET
 {
-    return screenTexture.Sample(samplerState, uv);
+    return screenTexture.Sample(samplerState, texCoord);
 }

@@ -124,6 +124,19 @@ const std::vector<uint32_t> basicGeometryIndices =
 	20,21,22,22,23,20,
 };
 
+static std::vector<Vertex> quadVertices =
+{
+	{{-1.0f, -1.0f, 0.0f}, WHITE, {0.0f, 0.0f}, {0.0,0.0,0.0}},  // Bottom-left
+	{{ 1.0f, -1.0f, 0.0f}, WHITE, {1.0f, 0.0f}, {0.0,0.0,0.0}},  // Bottom-right
+	{{-1.0f,  1.0f, 0.0f}, WHITE, {0.0f, 1.0f}, {0.0,0.0,0.0}},  // Top-left
+	{{ 1.0f,  1.0f, 0.0f}, WHITE, {1.0f, 1.0f}, {0.0,0.0,0.0}}   // Top-right
+};
+
+static std::vector<uint32_t> quadIndices = {
+	//0, 1, 2, 2, 3, 1
+	0, 2, 1, 1, 2, 3
+};
+
 /*const std::vector<Vertex> basicGeometryVertices =
 {
 	//----PLANE----
