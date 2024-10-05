@@ -11,6 +11,7 @@
 #include "Utils.h"
 
 #include "InputHandler.h"
+#include "DebugUtils.h"
 //#include "gfxMaths.h"
 
 #include "ModelLoader.h"
@@ -198,6 +199,7 @@ private:
 
     InputHandler inputHandler;
     GfxLoader gfxLoader;
+    DebugUtils debugUtils;
     std::vector<GfxObject*> objects;
 
 //Methods
@@ -230,7 +232,8 @@ private:
     VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipLevels);
+    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipLevels,
+        const char* imageName = "Unknown");
     void CreateSwapChainImageViews();
     void CreateShadowMapRenderPass();
     void CreateRenderPass();

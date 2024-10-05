@@ -42,6 +42,7 @@ void HelloTriangleApp::InitVulkan()
     CreateLogicalDevice();
     GetLogicalDeviceQueues();
     CreateSwapChain();
+    debugUtils.Init();
     CreateSwapChainImageViews();
     CreateShadowMapRenderPass();
     CreateRenderPass();
@@ -101,6 +102,7 @@ void HelloTriangleApp::CreateInstance()
     if (enableValidationLayers) 
     {
         requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        //requiredExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
     }
 
     if (logDebug == LogVerbosity::VERBOSE)
@@ -143,7 +145,6 @@ void HelloTriangleApp::CreateInstance()
     {
         throw std::runtime_error("Failed creating instance");
     }
-
 }
 
 bool HelloTriangleApp::InstanceHasRequiredExtensions(std::vector<const char*> requiredExtensions)
@@ -223,9 +224,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL ValidationErrorLogger(
 
     if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
     {
-        if (std::strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout") != nullptr
-        || std::strstr(pCallbackData->pMessage, "VUID-VkDescriptorImageInfo-imageLayout-00344") != nullptr
-        || std::strstr(pCallbackData->pMessage, "VUID-vkCmdDraw-None-08114") != nullptr)
+        if (std::strstr(pCallbackData->pMessage, "VUID-VkSamplerCreateInfo-anisotropyEnable-01070")
+        /*|| std::strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout") != nullptr*/ )
         {
             return VK_FALSE;
         }
@@ -629,7 +629,7 @@ VkExtent2D HelloTriangleApp::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& ca
 }
 
 VkImageView HelloTriangleApp::CreateImageView(VkImage image, VkFormat format, 
-    VkImageAspectFlags flags, uint32_t mipLevels)
+    VkImageAspectFlags flags, uint32_t mipLevels, const char* imageName)
 {
     VkImageView newImageView;
     VkImageViewCreateInfo imageViewCreateInfo{};
@@ -653,6 +653,9 @@ VkImageView HelloTriangleApp::CreateImageView(VkImage image, VkFormat format,
     {
         throw std::runtime_error("Error creating image view");
     }
+
+    debugUtils.SetVulkanObjectName(image, imageName);
+
     return newImageView;
 }
 
@@ -1289,14 +1292,14 @@ void HelloTriangleApp::CreateColorResources()
         VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         colorImage, colorImageMemory);
-    colorImageView = CreateImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+    colorImageView = CreateImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "SceneColorImage");
 
     CreateImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT,
         colorFormat, VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         resolveColorImage, resolveColorImageMemory);
-    resolveColorImageView = CreateImageView(resolveColorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+    resolveColorImageView = CreateImageView(resolveColorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "resolveSceneColorImage");
 
     //TransitionImageLayout(resolveColorImage, swapChainImageFormat,
     //    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, false);
@@ -1304,10 +1307,10 @@ void HelloTriangleApp::CreateColorResources()
     VkFormat blurImageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     CreateImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT,
         blurImageFormat, VK_IMAGE_TILING_LINEAR,
-        VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+        VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         blurImage, blurImageMemory);
-    blurImageView = CreateImageView(blurImage, blurImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+    blurImageView = CreateImageView(blurImage, blurImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "blurImage");
 }
 
 void HelloTriangleApp::CreateDepthResources()
@@ -1722,7 +1725,7 @@ void HelloTriangleApp::CreatePostProcessingQuadBuffer()
     vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferIndicesMemory);
 
     CreateBuffer(bufferSize,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, postProcessQuadIndicesBuffer, postProcessQuadIndicesBufferMemory);
 
     CopyBuffer(stagingBufferIndices, postProcessQuadIndicesBuffer, bufferSize);
@@ -1973,8 +1976,6 @@ void HelloTriangleApp::CreatePostProcessDescriptorSets()
 
 void HelloTriangleApp::UpdatePostProcessDescriptorSets()
 {
-    
-
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
         VkDescriptorBufferInfo bufferInfo{};
@@ -2380,8 +2381,8 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     unsigned int groupCountY = (swapChainExtent.height + 15) / 16;
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
 
-    //TransitionImageLayout(blurImage, swapChainImageFormat,
-    //VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, false,commandBuffer);
+    TransitionImageLayout(blurImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, false,commandBuffer);
 
     // Begin the render pass
     VkRenderPassBeginInfo renderPassInfo = {};
