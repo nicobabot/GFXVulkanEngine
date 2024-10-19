@@ -629,7 +629,7 @@ VkExtent2D HelloTriangleApp::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& ca
 }
 
 VkImageView HelloTriangleApp::CreateImageView(VkImage image, VkFormat format, 
-    VkImageAspectFlags flags, uint32_t mipLevels, const char* imageName)
+    VkImageAspectFlags flags, uint32_t mipLevels, const char* imageViewName)
 {
     VkImageView newImageView;
     VkImageViewCreateInfo imageViewCreateInfo{};
@@ -654,7 +654,7 @@ VkImageView HelloTriangleApp::CreateImageView(VkImage image, VkFormat format,
         throw std::runtime_error("Error creating image view");
     }
 
-    debugUtils.SetVulkanObjectName(image, imageName);
+    debugUtils.SetVulkanObjectName(newImageView, imageViewName);
 
     return newImageView;
 }
@@ -666,7 +666,7 @@ void HelloTriangleApp::CreateSwapChainImageViews()
     for (int i = 0; i < swapchainImageCount; ++i) 
     {
         swapChainImageViews[i] = CreateImageView(swapChainImages[i], 
-            swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+            swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "swapchainImage" + i);
     }
 }
 
@@ -1291,15 +1291,15 @@ void HelloTriangleApp::CreateColorResources()
         colorFormat, VK_IMAGE_TILING_OPTIMAL, 
         VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        colorImage, colorImageMemory);
-    colorImageView = CreateImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "SceneColorImage");
+        colorImage, colorImageMemory, "sceneColorImage");
+    colorImageView = CreateImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "sceneColorImageView");
 
     CreateImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT,
         colorFormat, VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        resolveColorImage, resolveColorImageMemory);
-    resolveColorImageView = CreateImageView(resolveColorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "resolveSceneColorImage");
+        resolveColorImage, resolveColorImageMemory, "resolveColorImage");
+    resolveColorImageView = CreateImageView(resolveColorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "resolveColorImageView");
 
     //TransitionImageLayout(resolveColorImage, swapChainImageFormat,
     //    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, false);
@@ -1309,8 +1309,8 @@ void HelloTriangleApp::CreateColorResources()
         blurImageFormat, VK_IMAGE_TILING_LINEAR,
         VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        blurImage, blurImageMemory);
-    blurImageView = CreateImageView(blurImage, blurImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "blurImage");
+        blurImage, blurImageMemory, "blurImage");
+    blurImageView = CreateImageView(blurImage, blurImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "blurImageView");
 }
 
 void HelloTriangleApp::CreateDepthResources()
@@ -1321,9 +1321,9 @@ void HelloTriangleApp::CreateDepthResources()
         msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, 
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        depthImage, depthImageMemory);
+        depthImage, depthImageMemory, "depthImage");
 
-    depthImageView = CreateImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+    depthImageView = CreateImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1, "depthImageView");
 
     TransitionImageLayout(depthImage, depthFormat,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
@@ -1337,12 +1337,12 @@ void HelloTriangleApp::CreateShadowMapResources()
         VK_SAMPLE_COUNT_1_BIT, depthFormat, VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        dirShadowMapDepthImage, dirShadowMapDepthMemory);
+        dirShadowMapDepthImage, dirShadowMapDepthMemory, "dirShadowMapDepthImage");
 
     dirShadowMapDepthImageView = CreateImageView(dirShadowMapDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
     TransitionImageLayout(dirShadowMapDepthImage, depthFormat,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1, "dirShadowMapDepthImage");
 }
 
 void HelloTriangleApp::CreatePostProcessResources()
@@ -1352,8 +1352,8 @@ void HelloTriangleApp::CreatePostProcessResources()
         colorFormat, VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        postProcessImage, postProcessImageMemory);
-    postProcessImageView = CreateImageView(postProcessImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+        postProcessImage, postProcessImageMemory, "postProcessImage");
+    postProcessImageView = CreateImageView(postProcessImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "postProcessImageView");
 }
 
 VkCommandBuffer HelloTriangleApp::BeginSingleTimeCommandBuffer()
@@ -1393,7 +1393,8 @@ void HelloTriangleApp::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_
 
 void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, 
     VkSampleCountFlagBits numSample, VkFormat format, VkImageTiling tiling, 
-    VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
+    VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory,
+    const char* imageName)
 {
     VkImageCreateInfo imageCreateInfo{};
     imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1431,6 +1432,8 @@ void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mip
     }
 
     vkBindImageMemory(gfxCtx->logicalDevice, image, imageMemory, 0);
+
+    debugUtils.SetVulkanObjectName(image, imageName);
 }
 
 void HelloTriangleApp::CreateTextureImage()
@@ -1469,7 +1472,7 @@ void HelloTriangleApp::CreateTextureImage()
         VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | 
         VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        textureImage, textureImageMemory);
+        textureImage, textureImageMemory, "textureImage");
 
     //TODO: make this operations in one command buffer async, now are various command buffers with single task
 
