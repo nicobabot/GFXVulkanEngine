@@ -574,6 +574,11 @@ void HelloTriangleApp::CreateSwapChain()
     vkGetSwapchainImagesKHR(gfxCtx->logicalDevice, swapChain, &swapchainImagesCount, nullptr);
     swapChainImages.resize(swapchainImagesCount);
     vkGetSwapchainImagesKHR(gfxCtx->logicalDevice, swapChain, &swapchainImagesCount, swapChainImages.data());
+
+    for (int i = 0; i < swapchainImagesCount; ++i) 
+    {
+        debugUtils.SetVulkanObjectName(swapChainImages[i], "swapChainImages" + i);
+    }
 }
 
 VkSurfaceFormatKHR HelloTriangleApp::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
@@ -1339,7 +1344,7 @@ void HelloTriangleApp::CreateShadowMapResources()
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         dirShadowMapDepthImage, dirShadowMapDepthMemory, "dirShadowMapDepthImage");
 
-    dirShadowMapDepthImageView = CreateImageView(dirShadowMapDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+    dirShadowMapDepthImageView = CreateImageView(dirShadowMapDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1, "dirShadowMapDepthImageView");
 
     TransitionImageLayout(dirShadowMapDepthImage, depthFormat,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1, "dirShadowMapDepthImage");
