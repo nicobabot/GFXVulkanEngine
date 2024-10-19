@@ -2376,6 +2376,10 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     //Compute Blur
     //UpdateComputeDescriptorSets();
+
+    TransitionImageLayout(blurImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, false, commandBuffer);
+
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
         computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
@@ -2420,6 +2424,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     // End the render pass
     vkCmdEndRenderPass(commandBuffer);
 
+    EndFrameLayoutTransitions(commandBuffer);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) 
     {
@@ -2552,6 +2557,7 @@ void HelloTriangleApp::DrawFrame()
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
+
     if (vkQueueSubmit(gfxCtx->graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
     {
         throw std::runtime_error("Error submitting draw command buffer!");
@@ -2579,7 +2585,17 @@ void HelloTriangleApp::DrawFrame()
     {
         throw std::runtime_error("Error presenting swapchain image!");
     }
+    EndFrame();
+}
 
+void HelloTriangleApp::EndFrameLayoutTransitions(VkCommandBuffer commandBuffer)
+{
+    TransitionImageLayout(resolveColorImage, swapChainImageFormat,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, false, commandBuffer);
+}
+
+void HelloTriangleApp::EndFrame()
+{    
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 

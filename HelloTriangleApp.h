@@ -287,6 +287,8 @@ private:
     void MainLoop();
     void UpdateUniformBuffers(uint32_t currentImage);
     void DrawFrame();
+    void EndFrameLayoutTransitions(VkCommandBuffer commandBuffer);
+    void EndFrame();
     void RecreateSwapChain();
     void CleanupSwapChain();
     void CleanupBuffers();

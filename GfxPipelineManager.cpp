@@ -167,6 +167,24 @@ void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayo
         srcStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         dstStageFlags = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     }
+    else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
+        newLayout == VK_IMAGE_LAYOUT_GENERAL)
+    {
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+
+        srcStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dstStageFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
+        newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    {
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        srcStageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dstStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    }
     else
     {
         throw std::runtime_error("Unsupported layout transition!");
