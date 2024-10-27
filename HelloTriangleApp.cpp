@@ -4,6 +4,7 @@
 #include "GfxContext.h"
 #include "BasicPolygons.h"
 
+
 void HelloTriangleApp::Run()
 {
     gfxCtx = new GfxContext();
@@ -42,13 +43,13 @@ void HelloTriangleApp::InitVulkan()
     CreateLogicalDevice();
     GetLogicalDeviceQueues();
     CreateSwapChain();
-    debugUtils.Init();
+    DebugUtils::getInstance().Init();
     CreateSwapChainImageViews();
     CreateShadowMapRenderPass();
-    CreateRenderPass();
+    CreateColorRenderPass();
     CreatePostProcessRenderPass();
     CreateShadowMapDescriptorSetLayout();
-    CreateDescriptorSetLayout();
+    CreateDescriptorSetLayouts();
     CreatePostProcessDescriptorSetLayout();
     CreateGraphicsPipeline();
     CreateCommandPool();
@@ -68,7 +69,7 @@ void HelloTriangleApp::InitVulkan()
     CreateShaderStorageBuffers();
     CreatePostProcessingQuadBuffer();
     CreateShadowMapDescriptorPool();
-    CreateDescriptorPool();
+    CreateColorPassDescriptorPool();
     CreatePostProcessDescriptorPool();
     CreateShadowMapDescriptorSets();
     CreateDescriptorSets();
@@ -225,7 +226,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL ValidationErrorLogger(
     if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
     {
         if (std::strstr(pCallbackData->pMessage, "VUID-VkSamplerCreateInfo-anisotropyEnable-01070")
-        /*|| std::strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout") != nullptr*/ )
+        || std::strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout") != nullptr )
         {
             return VK_FALSE;
         }
@@ -577,7 +578,7 @@ void HelloTriangleApp::CreateSwapChain()
 
     for (int i = 0; i < swapchainImagesCount; ++i) 
     {
-        debugUtils.SetVulkanObjectName(swapChainImages[i], "swapChainImages" + i);
+        DebugUtils::getInstance().SetVulkanObjectName(swapChainImages[i], "swapChainImages" + i);
     }
 }
 
@@ -659,7 +660,7 @@ VkImageView HelloTriangleApp::CreateImageView(VkImage image, VkFormat format,
         throw std::runtime_error("Error creating image view");
     }
 
-    debugUtils.SetVulkanObjectName(newImageView, imageViewName);
+    DebugUtils::getInstance().SetVulkanObjectName(newImageView, imageViewName);
 
     return newImageView;
 }
@@ -714,13 +715,10 @@ void HelloTriangleApp::CreateShadowMapRenderPass()
     renderPassCreateInfo.dependencyCount = 1;
     renderPassCreateInfo.pDependencies = &subpassDependency;
 
-    if (vkCreateRenderPass(gfxCtx->logicalDevice, &renderPassCreateInfo, nullptr, &shadowMapRenderPass) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating renderpass!");
-    }
+    CreateRenderPass(renderPassCreateInfo, shadowMapRenderPass, "ShadowMapRenderPass");
 }
 
-void HelloTriangleApp::CreateRenderPass()
+void HelloTriangleApp::CreateColorRenderPass()
 {
     VkAttachmentDescription colorAttachmentDescr{};
     colorAttachmentDescr.format = swapChainImageFormat;
@@ -796,10 +794,7 @@ void HelloTriangleApp::CreateRenderPass()
     renderPassCreateInfo.dependencyCount = 1;
     renderPassCreateInfo.pDependencies = &subpassDependency;
 
-    if (vkCreateRenderPass(gfxCtx->logicalDevice, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS) 
-    {
-        throw std::runtime_error("Error creating renderpass!");
-    }
+    CreateRenderPass(renderPassCreateInfo, renderPass, "ColorRenderPass");
 }
 
 void HelloTriangleApp::CreatePostProcessRenderPass()
@@ -842,10 +837,7 @@ void HelloTriangleApp::CreatePostProcessRenderPass()
     renderPassCreateInfo.dependencyCount = 1;
     renderPassCreateInfo.pDependencies = &subpassDependency;
 
-    if (vkCreateRenderPass(gfxCtx->logicalDevice, &renderPassCreateInfo, nullptr, &postProcessRenderPass) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating renderpass!");
-    }
+    CreateRenderPass(renderPassCreateInfo, postProcessRenderPass, "PostProcessRenderPass");
 }
 
 void HelloTriangleApp::CreateShadowMapDescriptorSetLayout()
@@ -863,14 +855,10 @@ void HelloTriangleApp::CreateShadowMapDescriptorSetLayout()
     descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     descriptorSetCreateInfo.pBindings = bindings.data();
 
-    if (vkCreateDescriptorSetLayout(gfxCtx->logicalDevice, &descriptorSetCreateInfo,
-        nullptr, &shadowMapDescriptorSetLayout) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating descriptor set layout!");
-    }
+    CreateDescriptorSetLayout(descriptorSetCreateInfo, shadowMapDescriptorSetLayout, "ShadowMapDescriptorSetLayout");
 }
 
-void HelloTriangleApp::CreateDescriptorSetLayout()
+void HelloTriangleApp::CreateDescriptorSetLayouts()
 {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = 0;
@@ -907,11 +895,7 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     descriptorSetCreateInfo.pBindings = bindings.data();
 
-    if (vkCreateDescriptorSetLayout(gfxCtx->logicalDevice, &descriptorSetCreateInfo,
-        nullptr, &descriptorSetLayout) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating descriptor set layout!");
-    }
+    CreateDescriptorSetLayout(descriptorSetCreateInfo, descriptorSetLayout, "ColorDescriptorSetLayout");
 
     //Compute
 #if COMPUTE_FEATURE
@@ -939,11 +923,7 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
     computeLayoutInfo.bindingCount = layoutBindings.size();
     computeLayoutInfo.pBindings = layoutBindings.data();
 
-    if (vkCreateDescriptorSetLayout(gfxCtx->logicalDevice, &computeLayoutInfo,
-        nullptr, &computeDescriptorSetLayout) != VK_SUCCESS) 
-    {
-        throw std::runtime_error("Error creating compute descriptr set layout!");
-    }
+    CreateDescriptorSetLayout(computeLayoutInfo, computeDescriptorSetLayout, "ComputeDescriptorSetLayout");
 #endif //#if COMPUTE_FEATURE
 }
 
@@ -977,11 +957,7 @@ void HelloTriangleApp::CreatePostProcessDescriptorSetLayout()
     descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     descriptorSetCreateInfo.pBindings = bindings.data();
 
-    if (vkCreateDescriptorSetLayout(gfxCtx->logicalDevice, &descriptorSetCreateInfo,
-        nullptr, &postProcessDescriptorSetLayout) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating descriptor set layout!");
-    }
+    CreateDescriptorSetLayout(descriptorSetCreateInfo, postProcessDescriptorSetLayout, "PostProcessDescriptorSetLayout");
 }
 
 void HelloTriangleApp::CreateGraphicsPipeline()
@@ -1018,14 +994,14 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     graphicPipelineInfo.msaaSamples = msaaSamples;
     graphicPipelineInfo.viewportExtent = swapChainExtent;
 
-    CreateGraphicsPipeline_Internal(graphicPipelineInfo, graphicsPipelineLayout, graphicsPipeline);
+    CreateGraphicsPipeline_Internal(graphicPipelineInfo, graphicsPipelineLayout, graphicsPipeline, "GraphicsPipeline", "GraphicsPipelineLayout");
 
     //Shadow Map graphics pipeline
     std::vector<char> shadowMapVertexShader = ReadFile("CompiledShaders/shadowMapVert.spv");
     std::vector<char> shadowMapFragmentShader = ReadFile("CompiledShaders/shadowMapFrag.spv");
 
-    VkShaderModule shadowMapVertexShaderModule = CreateShaderModule(shadowMapVertexShader);
-    VkShaderModule shadowMapFragmentShaderModule = CreateShaderModule(shadowMapFragmentShader);
+    VkShaderModule shadowMapVertexShaderModule = CreateShaderModule(shadowMapVertexShader, "ShadowMapVertexShaderModule");
+    VkShaderModule shadowMapFragmentShaderModule = CreateShaderModule(shadowMapFragmentShader, "ShadowMapFragmentShaderModule");
 
     VkPipelineShaderStageCreateInfo shadowMapVertexPipelineCreateInfo{};
     shadowMapVertexPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1051,14 +1027,14 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     shadowMapGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     shadowMapGraphicPipelineInfo.viewportExtent = swapChainExtent;
 
-    CreateGraphicsPipeline_Internal(shadowMapGraphicPipelineInfo, shadowMapPipelineLayout, shadowMapPipeline);
+    CreateGraphicsPipeline_Internal(shadowMapGraphicPipelineInfo, shadowMapPipelineLayout, shadowMapPipeline, "ShadowMapPipeline", "ShadowMapPipelineLayout");
 
     //Post process present pipeline
     std::vector<char> postProcessPresentVertexShader = ReadFile("CompiledShaders/postProcessPresentVert.spv");
     std::vector<char> postProcessPresentFragmentShader = ReadFile("CompiledShaders/PostProcessPresentFrag.spv");
 
-    VkShaderModule postProcessPresentVertexShaderModule = CreateShaderModule(postProcessPresentVertexShader);
-    VkShaderModule postProcessPresentFragmentShaderModule = CreateShaderModule(postProcessPresentFragmentShader);
+    VkShaderModule postProcessPresentVertexShaderModule = CreateShaderModule(postProcessPresentVertexShader, "PostProcessPresentVertexShaderModule");
+    VkShaderModule postProcessPresentFragmentShaderModule = CreateShaderModule(postProcessPresentFragmentShader, "postProcessPresentFragmentShaderModule");
 
     VkPipelineShaderStageCreateInfo postProcessPresentVertexPipelineCreateInfo{};
     postProcessPresentVertexPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1084,7 +1060,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     postProcessPresentGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     postProcessPresentGraphicPipelineInfo.viewportExtent = swapChainExtent;
 
-    CreateGraphicsPipeline_Internal(postProcessPresentGraphicPipelineInfo, postProcessPipelineLayout, postProcessPipeline);
+    CreateGraphicsPipeline_Internal(postProcessPresentGraphicPipelineInfo, postProcessPipelineLayout, postProcessPipeline, "PostProcessPipeline", "ostProcessPipelineLayout");
 
    /*/ std::vector<char> brdfFragmentShader = ReadFile("CompiledShaders/brdfFrag.spv");
 
@@ -1119,7 +1095,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 #if COMPUTE_FEATURE
 
     std::vector<char> computeShader = ReadFile("CompiledShaders/cs_blur.spv");
-    VkShaderModule computeShaderModule = CreateShaderModule(computeShader);
+    VkShaderModule computeShaderModule = CreateShaderModule(computeShader, "BlurComputeShaderModule");
 
     VkPipelineShaderStageCreateInfo computePipelineCreateInfo{};
     computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1172,10 +1148,8 @@ void HelloTriangleApp::CreateShadowMapFramebuffers()
         framebufferCreateInfo.height = swapChainExtent.height;
         framebufferCreateInfo.layers = 1;
 
-        if (vkCreateFramebuffer(gfxCtx->logicalDevice, &framebufferCreateInfo, nullptr, &shadowMapFramebuffers[i]) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Error creating framebuffer!");
-        }
+        std::string debugName = "ShadowMapFramebuffers" + std::to_string(i + 1);
+        CreateFrameBuffer(framebufferCreateInfo, shadowMapFramebuffers[i], debugName.c_str());
     }
 }
 
@@ -1200,10 +1174,8 @@ void HelloTriangleApp::CreateFramebuffers()
         framebufferCreateInfo.height = swapChainExtent.height;
         framebufferCreateInfo.layers = 1;
 
-        if (vkCreateFramebuffer(gfxCtx->logicalDevice, &framebufferCreateInfo, nullptr, &swapchainFramebuffers[i]) != VK_SUCCESS) 
-        {   
-            throw std::runtime_error("Error creating framebuffer!");
-        }
+        std::string debugName = "SwapchainFramebuffers" + std::to_string(i + 1);
+        CreateFrameBuffer(framebufferCreateInfo, swapchainFramebuffers[i], debugName.c_str());
     }
 }
 
@@ -1226,10 +1198,8 @@ void HelloTriangleApp::CreatePostProcessFramebuffers()
         framebufferCreateInfo.height = swapChainExtent.height;
         framebufferCreateInfo.layers = 1;
 
-        if (vkCreateFramebuffer(gfxCtx->logicalDevice, &framebufferCreateInfo, nullptr, &postProcessFramebuffers[i]) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Error creating framebuffer!");
-        }
+        std::string debugName = "PostProcessFramebuffers" + std::to_string(i + 1);
+        CreateFrameBuffer(framebufferCreateInfo, postProcessFramebuffers[i], debugName.c_str());
     }
 }
 
@@ -1438,7 +1408,7 @@ void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mip
 
     vkBindImageMemory(gfxCtx->logicalDevice, image, imageMemory, 0);
 
-    debugUtils.SetVulkanObjectName(image, imageName);
+    DebugUtils::getInstance().SetVulkanObjectName(image, imageName);
 }
 
 void HelloTriangleApp::CreateTextureImage()
@@ -1464,7 +1434,7 @@ void HelloTriangleApp::CreateTextureImage()
     VkDeviceMemory staginBufferMemory;
     CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer, staginBufferMemory);
+        stagingBuffer, staginBufferMemory, "TextureStagingBuffer");
 
     void* data;
     vkMapMemory(gfxCtx->logicalDevice, staginBufferMemory, 0, imageSize, 0, &data);
@@ -1637,9 +1607,9 @@ void HelloTriangleApp::PopulateObjects()
 }
 
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
-    VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory)
+    VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory, const char* BufferName, const char* BufferMemoryName)
 {
-    CreateBuffer_Internal(size, usageFlags, memoryFlags, newBuffer, bufferMemory);
+    CreateBuffer_Internal(size, usageFlags, memoryFlags, newBuffer, bufferMemory, BufferName, BufferMemoryName);
 }
 
 void HelloTriangleApp::CreateUniformBuffers()
@@ -1650,11 +1620,14 @@ void HelloTriangleApp::CreateUniformBuffers()
     uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
     uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
+    std::string uniformBufferDebugName = "UniformBuffer";
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) 
     {
+        uniformBufferDebugName += std::to_string(i + 1);
+
         CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-            uniformBuffers[i], uniformBuffersMemory[i]);
+            uniformBuffers[i], uniformBuffersMemory[i], uniformBufferDebugName.c_str());
 
         vkMapMemory(gfxCtx->logicalDevice, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
     }
@@ -1681,11 +1654,13 @@ void HelloTriangleApp::CreateShaderStorageBuffers()
     memcpy(data, objects.data(), bufferSize);
     vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
+    std::string shaderStorageDebugName = "ShaderStorageBuffers";
     for(int i=0; i<MAX_FRAMES_IN_FLIGHT; ++i)
     {
+        shaderStorageDebugName += std::to_string(i + 1);
         CreateBuffer(bufferSize, 
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, shaderStorageBuffers[i], shaderStorageBuffersMemory[i]);
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, shaderStorageBuffers[i], shaderStorageBuffersMemory[i], shaderStorageDebugName.c_str());
 
         CopyBuffer(stagingBuffer, shaderStorageBuffers[i], bufferSize);
     }
@@ -1712,7 +1687,7 @@ void HelloTriangleApp::CreatePostProcessingQuadBuffer()
 
     CreateBuffer(bufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, postProcessQuadBuffer, postProcessQuadBufferMemory);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, postProcessQuadBuffer, postProcessQuadBufferMemory, "PostProcessQuadVertexBuffer", "PostProcessQuadBufferMemory");
 
     CopyBuffer(stagingBuffer, postProcessQuadBuffer, bufferSize);
 
@@ -1734,7 +1709,7 @@ void HelloTriangleApp::CreatePostProcessingQuadBuffer()
 
     CreateBuffer(bufferSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, postProcessQuadIndicesBuffer, postProcessQuadIndicesBufferMemory);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, postProcessQuadIndicesBuffer, postProcessQuadIndicesBufferMemory, "PostProcessQuadIndicesBuffer", "PostProcessQuadIndicesBufferMemory");
 
     CopyBuffer(stagingBufferIndices, postProcessQuadIndicesBuffer, bufferSize);
 
@@ -1754,14 +1729,10 @@ void HelloTriangleApp::CreateShadowMapDescriptorPool()
     descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSize.data();
     descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    if (vkCreateDescriptorPool(gfxCtx->logicalDevice, &descriptorPoolCreateInfo,
-        nullptr, &shadowMapDescriptorPool) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating descriptor pool!");
-    }
+    CreateDescriptorPool(descriptorPoolCreateInfo, shadowMapDescriptorPool, "ShadowMapDescriptorPool");
 }
 
-void HelloTriangleApp::CreateDescriptorPool()
+void HelloTriangleApp::CreateColorPassDescriptorPool()
 {
     std::array<VkDescriptorPoolSize, 4> descriptorPoolSize;
     descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1779,11 +1750,7 @@ void HelloTriangleApp::CreateDescriptorPool()
     descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSize.data();
     descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    if (vkCreateDescriptorPool(gfxCtx->logicalDevice, &descriptorPoolCreateInfo,
-        nullptr, &descriptorPool) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating descriptor pool!");
-    }
+    CreateDescriptorPool(descriptorPoolCreateInfo, descriptorPool, "ColorPassDescriptorPool");
 
     //Compute
 #if COMPUTE_FEATURE
@@ -1801,11 +1768,7 @@ void HelloTriangleApp::CreateDescriptorPool()
     computeDescriptorPoolCreateInfo.pPoolSizes = computeDescriptorPoolSize.data();
     computeDescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    if (vkCreateDescriptorPool(gfxCtx->logicalDevice, &computeDescriptorPoolCreateInfo,
-        nullptr, &computeDescriptorPool) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating compute descriptor pool!");
-    }
+    CreateDescriptorPool(computeDescriptorPoolCreateInfo, computeDescriptorPool, "ComputeDescriptorPool");
 #endif//#if COMPUTE_FEATURE
 }
 
@@ -1826,11 +1789,7 @@ void HelloTriangleApp::CreatePostProcessDescriptorPool()
     descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSize.data();
     descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    if (vkCreateDescriptorPool(gfxCtx->logicalDevice, &descriptorPoolCreateInfo,
-        nullptr, &postProcessDescriptorPool) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error creating descriptor pool!");
-    }
+    CreateDescriptorPool(descriptorPoolCreateInfo, postProcessDescriptorPool, "PostProcessDescriptorPool");
 }
 
 void HelloTriangleApp::CreateShadowMapDescriptorSets()
@@ -1843,11 +1802,7 @@ void HelloTriangleApp::CreateShadowMapDescriptorSets()
     descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
     shadowMapDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(gfxCtx->logicalDevice, &descriptorSetAllocateInfo,
-        shadowMapDescriptorSets.data()) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error allocating descriptor sets!");
-    }
+    AllocateDescriptorSets(descriptorSetAllocateInfo, shadowMapDescriptorSets, "ShadowMapDescriptorSet");
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
@@ -1881,11 +1836,7 @@ void HelloTriangleApp::CreateDescriptorSets()
     descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
     descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(gfxCtx->logicalDevice, &descriptorSetAllocateInfo,
-        descriptorSets.data()) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error allocating descriptor sets!");
-    }
+    AllocateDescriptorSets(descriptorSetAllocateInfo, descriptorSets, "ColorDescriptorSet");
 
 #if COMPUTE_FEATURE
     std::vector<VkDescriptorSetLayout> conmputeLayouts(MAX_FRAMES_IN_FLIGHT, computeDescriptorSetLayout);
@@ -1896,11 +1847,7 @@ void HelloTriangleApp::CreateDescriptorSets()
     computeDescriptorSetAllocateInfo.pSetLayouts = conmputeLayouts.data();
 
     computeDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(gfxCtx->logicalDevice, &computeDescriptorSetAllocateInfo,
-        computeDescriptorSets.data()) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error allocating compute descriptor sets!");
-    }
+    AllocateDescriptorSets(computeDescriptorSetAllocateInfo, computeDescriptorSets, "ComputeDescriptorSet");
 #endif//#if COMPUTE_FEATURE
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
@@ -1973,11 +1920,7 @@ void HelloTriangleApp::CreatePostProcessDescriptorSets()
     descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
     postProcessDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(gfxCtx->logicalDevice, &descriptorSetAllocateInfo,
-        postProcessDescriptorSets.data()) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error allocating descriptor sets!");
-    }
+    AllocateDescriptorSets(descriptorSetAllocateInfo, postProcessDescriptorSets, "PostProcessDescriptorSet");
 
     UpdatePostProcessDescriptorSets();
 }
@@ -2442,7 +2385,7 @@ uint32_t HelloTriangleApp::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyF
     return FindMemoryType_Internal(typeFilter, memoryFlags);
 }
 
-VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& code)
+VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& code, const char* Name)
 {
     VkShaderModuleCreateInfo shaderModuleCreateInfo{};
     shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -2454,6 +2397,8 @@ VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& cod
     {
         throw std::runtime_error("Error creating shader module!");
     }
+
+    DebugUtils::getInstance().SetVulkanObjectName(shaderModule, Name);
     
     return shaderModule;
 }
@@ -2645,6 +2590,18 @@ void HelloTriangleApp::CleanupSwapChain()
     vkDestroyImageView(gfxCtx->logicalDevice, colorImageView, nullptr);
     vkDestroyImage(gfxCtx->logicalDevice, colorImage, nullptr);
     vkFreeMemory(gfxCtx->logicalDevice, colorImageMemory, nullptr);
+
+    vkDestroyImageView(gfxCtx->logicalDevice, resolveColorImageView, nullptr);
+    vkDestroyImage(gfxCtx->logicalDevice, resolveColorImage, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, resolveColorImageMemory, nullptr);
+
+    vkDestroyImageView(gfxCtx->logicalDevice, blurImageView, nullptr);
+    vkDestroyImage(gfxCtx->logicalDevice, blurImage, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, blurImageMemory, nullptr);
+
+    vkDestroyImageView(gfxCtx->logicalDevice, postProcessImageView, nullptr);
+    vkDestroyImage(gfxCtx->logicalDevice, postProcessImage, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, postProcessImageMemory, nullptr);
 
     for (VkFramebuffer framebuffer : swapchainFramebuffers)
     {

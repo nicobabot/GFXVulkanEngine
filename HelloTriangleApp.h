@@ -11,13 +11,14 @@
 #include "Utils.h"
 
 #include "InputHandler.h"
-#include "DebugUtils.h"
+
 //#include "gfxMaths.h"
 
 #include "ModelLoader.h"
+#include "DebugUtils.h"
 #include "GfxPipelineManager.h";
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
-    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline);
+    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, const char* VkPipelineName, const char* VkPipelineLayoutName);
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
@@ -199,7 +200,6 @@ private:
 
     InputHandler inputHandler;
     GfxLoader gfxLoader;
-    DebugUtils debugUtils;
     std::vector<GfxObject*> objects;
 
 //Methods
@@ -236,13 +236,13 @@ private:
         const char* imageName = "Unknown");
     void CreateSwapChainImageViews();
     void CreateShadowMapRenderPass();
-    void CreateRenderPass();
+    void CreateColorRenderPass();
     void CreatePostProcessRenderPass();
     void CreateShadowMapDescriptorSetLayout();
-    void CreateDescriptorSetLayout();
+    void CreateDescriptorSetLayouts();
     void CreatePostProcessDescriptorSetLayout();
     void CreateShadowMapDescriptorPool();
-    void CreateDescriptorPool();
+    void CreateColorPassDescriptorPool();
     void CreatePostProcessDescriptorPool();
     void CreateShadowMapDescriptorSets();
     void CreateDescriptorSets();
@@ -272,7 +272,7 @@ private:
     void CreateTextureSampler();
     void PopulateObjects();
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
-        VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory);
+        VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory, const char* BufferName = "Unknown", const char* BufferMemoryName = "Unknown");
     void CreateUniformBuffers();
     void CreateShaderStorageBuffers();
     void CreatePostProcessingQuadBuffer();
@@ -283,7 +283,7 @@ private:
     void RecordComputeCommandBuffer(VkCommandBuffer commandBuffer);
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryFlags);
-    VkShaderModule CreateShaderModule(const std::vector<char>& code);
+    VkShaderModule CreateShaderModule(const std::vector<char>& code, const char* Name = "Unknown");
     void MainLoop();
     void UpdateUniformBuffers(uint32_t currentImage);
     void DrawFrame();

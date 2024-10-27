@@ -24,7 +24,7 @@ VSOutput VSMain(float3 inPosition : SV_POSITION, float3 inColor : COLOR,
     float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
 {
     VSOutput output;
-    output.position = float4(inPosition, 0.0f, 1.0f);
+    output.position = float4(inPosition, 1.0f);
     output.texCoord = inTexCoord;
     return output;
 }

@@ -4,8 +4,8 @@
 #include "GfxContext.h"
 
 
-GfxObject::GfxObject(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout)
-    :graphicsPipeline(graphicsPipeline), graphicsPipelineLayout(graphicsPipelineLayout)
+GfxObject::GfxObject(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* Name)
+    :graphicsPipeline(graphicsPipeline), graphicsPipelineLayout(graphicsPipelineLayout), name(Name)
 {
 }
 
@@ -31,8 +31,10 @@ void GfxObject::CreateVertexBuffer()
     memcpy(data, vertices.data(), (size_t)bufferSize);
     vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
+    std::string debugName = std::string(name) + "VertexBuffer";
+    std::string debugNameMemory = std::string(name) + "VertexBufferMemory";
     CreateBuffer_Internal(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory, debugName.c_str(), debugNameMemory.c_str());
 
     CopyBuffer_Internal(stagingBuffer, vertexBuffer, bufferSize);
     vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
@@ -54,8 +56,10 @@ void GfxObject::CreateIndexBuffer()
     memcpy(data, indices.data(), bufferSize);
     vkUnmapMemory(gfxCtx->logicalDevice, stagingBufferMemory);
 
+    std::string debugName = std::string(name) + "IndexBuffer";
+    std::string debugNameMemory = std::string(name) + "IndexBufferMemory";
     CreateBuffer_Internal(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory, debugName.c_str(), debugNameMemory.c_str());
 
     CopyBuffer_Internal(stagingBuffer, indexBuffer, bufferSize);
     vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);

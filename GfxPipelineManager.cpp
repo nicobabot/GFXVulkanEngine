@@ -1,6 +1,9 @@
 #include "GfxPipelineManager.h"
 #include "gfxMaths.h"
 #include "GfxContext.h"
+#include "DebugUtils.h"
+
+#include <string>
 
 VkCommandBuffer BeginSingleTimeCommandBuffer_Internal()
 {
@@ -205,7 +208,7 @@ void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayo
 }
 
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
-    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline)
+    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, const char* VkPipelineName, const char* VkPipelineLayoutName)
 
 {
     //TODO: this should come as argument too
@@ -330,6 +333,8 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
         throw std::runtime_error("Error creating pipeline layuout!");
     }
 
+    DebugUtils::getInstance().SetVulkanObjectName(graphicPipelineLayout, VkPipelineLayoutName);
+
     VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
     graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     graphicsPipelineCreateInfo.stageCount = graphicPipelineInfo.shaderStages.size();
@@ -358,10 +363,11 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
         throw std::runtime_error("Error creating graphic pipeline!");
     }
 
+    DebugUtils::getInstance().SetVulkanObjectName(graphicPipeline, VkPipelineName);
 }
 
 void CreateBuffer_Internal(VkDeviceSize size, VkBufferUsageFlags usageFlags,
-    VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory)
+    VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory, const char* BufferName, const char* BufferMemoryName)
 {
     VkBufferCreateInfo createBuffer{};
     createBuffer.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -373,6 +379,8 @@ void CreateBuffer_Internal(VkDeviceSize size, VkBufferUsageFlags usageFlags,
     {
         throw std::runtime_error("Error creating vertex buffer!");
     }
+
+    DebugUtils::getInstance().SetVulkanObjectName(newBuffer, BufferName);
 
     VkMemoryRequirements bufferMemoryRequirements;
     vkGetBufferMemoryRequirements(gfxCtx->logicalDevice, newBuffer, &bufferMemoryRequirements);
@@ -388,6 +396,8 @@ void CreateBuffer_Internal(VkDeviceSize size, VkBufferUsageFlags usageFlags,
     {
         throw std::runtime_error("Error allocating vertex buffer memory");
     }
+
+    DebugUtils::getInstance().SetVulkanObjectName(bufferMemory, BufferMemoryName);
 
     vkBindBufferMemory(gfxCtx->logicalDevice, newBuffer, bufferMemory, 0);
 }
@@ -435,4 +445,62 @@ void CopyImage_Internal(VkDevice device, VkImage srcImage, VkFormat srcFormat, i
     TransitionImageLayout(dstImage, dstFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL, dstMipCount);
 
     EndSingleTimeCommandBuffer_Internal(commandBuffer);
+}
+
+void CreateDescriptorSetLayout(VkDescriptorSetLayoutCreateInfo descriptorCreateInfo, VkDescriptorSetLayout &descriptorSetLayout, const char* Name)
+{
+    if (vkCreateDescriptorSetLayout(gfxCtx->logicalDevice, &descriptorCreateInfo,
+        nullptr, &descriptorSetLayout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating descriptor set layout!");
+    }
+
+    DebugUtils::getInstance().SetVulkanObjectName(descriptorSetLayout, Name);
+}
+
+void AllocateDescriptorSets(VkDescriptorSetAllocateInfo descriptorSetInfo, std::vector<VkDescriptorSet> &descriptorSets, const char* Name)
+{
+    if (vkAllocateDescriptorSets(gfxCtx->logicalDevice, &descriptorSetInfo,
+        descriptorSets.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error allocating descriptor sets!");
+    }
+
+    std::string str = Name;
+    for (int i = 0; i < descriptorSets.size(); ++i) 
+    {
+        str += std::to_string(i + 1);
+        DebugUtils::getInstance().SetVulkanObjectName(descriptorSets[i], str.c_str());
+    }
+}
+
+void CreateDescriptorPool(VkDescriptorPoolCreateInfo descriptorPoolCreateInfo, VkDescriptorPool& descriptorPool, const char* Name)
+{
+    if (vkCreateDescriptorPool(gfxCtx->logicalDevice, &descriptorPoolCreateInfo,
+        nullptr, &descriptorPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating descriptor pool!");
+    }
+
+    DebugUtils::getInstance().SetVulkanObjectName(descriptorPool, Name);
+}
+
+void CreateFrameBuffer(VkFramebufferCreateInfo frameBufferCreateInfo, VkFramebuffer& frameBuffer, const char* Name)
+{
+    if (vkCreateFramebuffer(gfxCtx->logicalDevice, &frameBufferCreateInfo, nullptr, &frameBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating framebuffer!");
+    }
+
+    DebugUtils::getInstance().SetVulkanObjectName(frameBuffer, Name);
+}
+
+void CreateRenderPass(VkRenderPassCreateInfo renderpassCreateInfo, VkRenderPass& renderpass, const char* Name)
+{
+    if (vkCreateRenderPass(gfxCtx->logicalDevice, &renderpassCreateInfo, nullptr, &renderpass) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Error creating renderpass!");
+    }
+
+    DebugUtils::getInstance().SetVulkanObjectName(renderpass, Name);
 }

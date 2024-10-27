@@ -8,7 +8,7 @@ class GfxObject
 {
 	public:
 
-	GfxObject(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout);
+	GfxObject(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* Name = "Unknown");
 
 	void SetDescriptorSetAndLayout(std::vector<VkDescriptorSet> descriptorSet, 
 		VkDescriptorSetLayout descriptorSetLayout);
@@ -29,6 +29,8 @@ class GfxObject
 
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;
+
+	const char* name;
 
 	void CreateVertexBuffer();
 	void CreateIndexBuffer();
