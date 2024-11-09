@@ -152,6 +152,7 @@
     <ClCompile Include="BasicPolygons.cpp" />
     <ClCompile Include="DebugUtils.cpp" />
     <ClCompile Include="GfxContext.cpp" />
+    <ClCompile Include="GfxDecal.cpp" />
     <ClCompile Include="GfxObject.cpp" />
     <ClCompile Include="GfxPipelineManager.cpp" />
     <ClCompile Include="HelloTriangleApp.cpp" />
@@ -164,6 +165,7 @@
     <ClInclude Include="ColorsDef.h" />
     <ClInclude Include="DebugUtils.h" />
     <ClInclude Include="GfxContext.h" />
+    <ClInclude Include="GfxDecal.h" />
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="GfxObject.h" />
     <ClInclude Include="GfxPipelineManager.h" />

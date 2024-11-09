@@ -140,6 +140,24 @@ void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayo
         srcStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         dstStageFlags = transitionToCompute ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     }
+    else if (oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
+        newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    {
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        srcStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dstStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL &&
+        newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+    {
+        imageMemoryBarrier.srcAccessMask = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        imageMemoryBarrier.dstAccessMask = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        srcStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dstStageFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    }
     else if (oldLayout == VK_IMAGE_LAYOUT_GENERAL &&
         newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
     {
