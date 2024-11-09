@@ -48,10 +48,13 @@ void HelloTriangleApp::InitVulkan()
     CreateShadowMapRenderPass();
     CreateColorRenderPass();
     CreatePostProcessRenderPass();
+    CreateDecalsRenderPass();
     CreateShadowMapDescriptorSetLayout();
     CreateDescriptorSetLayouts();
     CreatePostProcessDescriptorSetLayout();
+    CreateDecalsDescriptorSetLayout();
     CreateGraphicsPipeline();
+    CreateDecalsPipeline();
     CreateCommandPool();
     CreateColorResources();
     CreateDepthResources();
@@ -71,9 +74,11 @@ void HelloTriangleApp::InitVulkan()
     CreateShadowMapDescriptorPool();
     CreateColorPassDescriptorPool();
     CreatePostProcessDescriptorPool();
+    CreateDecalsDescriptorPool();
     CreateShadowMapDescriptorSets();
     CreateDescriptorSets();
     CreatePostProcessDescriptorSets();
+    CreateDecalsDescriptorSets();
     CreateCommandBuffers();
     CreateSyncObjects();
     SetDescriptorsToObjects();
@@ -839,6 +844,49 @@ void HelloTriangleApp::CreatePostProcessRenderPass()
     CreateRenderPass(renderPassCreateInfo, postProcessRenderPass, "postProcessRenderPass");
 }
 
+void HelloTriangleApp::CreateDecalsRenderPass()
+{
+    VkAttachmentDescription colorAttachmentDescr{};
+    colorAttachmentDescr.format = swapChainImageFormat;
+    colorAttachmentDescr.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachment{};
+    colorAttachment.attachment = 0;
+    colorAttachment.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpassDescr{};
+    subpassDescr.colorAttachmentCount = 1;
+    subpassDescr.pColorAttachments = &colorAttachment;
+
+    VkSubpassDependency subpassDependency{};
+    subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpassDependency.dstSubpass = 0;
+    subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    subpassDependency.srcAccessMask = 0;
+    subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    std::array<VkAttachmentDescription, 1> attachments = { colorAttachmentDescr };
+    VkRenderPassCreateInfo renderPassCreateInfo{};
+    renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    renderPassCreateInfo.pAttachments = attachments.data();
+    renderPassCreateInfo.subpassCount = 1;
+    renderPassCreateInfo.pSubpasses = &subpassDescr;
+    renderPassCreateInfo.dependencyCount = 1;
+    renderPassCreateInfo.pDependencies = &subpassDependency;
+
+    CreateRenderPass(renderPassCreateInfo, decalsRenderPass, "decalsRenderPass");
+}
+
 void HelloTriangleApp::CreateShadowMapDescriptorSetLayout()
 {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
@@ -957,6 +1005,46 @@ void HelloTriangleApp::CreatePostProcessDescriptorSetLayout()
     descriptorSetCreateInfo.pBindings = bindings.data();
 
     CreateDescriptorSetLayout(descriptorSetCreateInfo, postProcessDescriptorSetLayout, "postProcessDescriptorSetLayout");
+}
+
+void HelloTriangleApp::CreateDecalsDescriptorSetLayout()
+{
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+    samplerLayoutBinding.binding = 1;
+    samplerLayoutBinding.descriptorCount = 1;
+    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    samplerLayoutBinding.pImmutableSamplers = nullptr;
+    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutBinding opaqueSampledImageLayoutBinding{};
+    opaqueSampledImageLayoutBinding.binding = 2;
+    opaqueSampledImageLayoutBinding.descriptorCount = 1;
+    opaqueSampledImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    opaqueSampledImageLayoutBinding.pImmutableSamplers = nullptr;
+    opaqueSampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutBinding depthSampledImageLayoutBinding{};
+    depthSampledImageLayoutBinding.binding = 3;
+    depthSampledImageLayoutBinding.descriptorCount = 1;
+    depthSampledImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    depthSampledImageLayoutBinding.pImmutableSamplers = nullptr;
+    depthSampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 4> bindings = { uboLayoutBinding,
+        samplerLayoutBinding, opaqueSampledImageLayoutBinding, depthSampledImageLayoutBinding };
+    VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
+    descriptorSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    descriptorSetCreateInfo.pBindings = bindings.data();
+
+    CreateDescriptorSetLayout(descriptorSetCreateInfo, decalsDescriptorSetLayout, "decalsDescriptorSetLayout");
 }
 
 void HelloTriangleApp::CreateGraphicsPipeline()
@@ -1128,6 +1216,42 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
     vkDestroyShaderModule(gfxCtx->logicalDevice, computeShaderModule, nullptr);
 #endif//#if COMPUTE_FEATURE
+}
+
+void HelloTriangleApp::CreateDecalsPipeline()
+{
+    //Decals graphics pipeline
+    std::vector<char> decalsVertexShader = ReadFile("CompiledShaders/decalsVert.spv");
+    std::vector<char> decalsFragmentShader = ReadFile("CompiledShaders/decalsFrag.spv");
+
+    VkShaderModule decalsVertexShaderModule = CreateShaderModule(decalsVertexShader, "decalsVertexShaderModule");
+    VkShaderModule decalsFragmentShaderModule = CreateShaderModule(decalsFragmentShader, "decalsFragmentShaderModule");
+
+    VkPipelineShaderStageCreateInfo decalVertexPipelineCreateInfo{};
+    decalVertexPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    decalVertexPipelineCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    decalVertexPipelineCreateInfo.module = decalsVertexShaderModule;
+    decalVertexPipelineCreateInfo.pName = "VSMain";
+    decalVertexPipelineCreateInfo.pSpecializationInfo = nullptr;
+
+    VkPipelineShaderStageCreateInfo decalsFragmentPipelineCreateInfo{};
+    decalsFragmentPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    decalsFragmentPipelineCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    decalsFragmentPipelineCreateInfo.module = decalsFragmentShaderModule;
+    decalsFragmentPipelineCreateInfo.pName = "PSMain";
+    decalsFragmentPipelineCreateInfo.pSpecializationInfo = nullptr;
+
+    std::vector<VkPipelineShaderStageCreateInfo>  decalsShaderStages{ decalVertexPipelineCreateInfo,
+        decalsFragmentPipelineCreateInfo };
+
+    GraphicsPipelineInfo decalsGraphicPipelineInfo{};
+    decalsGraphicPipelineInfo.descriptorSetLayout = decalsDescriptorSetLayout;
+    decalsGraphicPipelineInfo.shaderStages = decalsShaderStages;
+    decalsGraphicPipelineInfo.renderPass = decalsRenderPass;
+    decalsGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+    decalsGraphicPipelineInfo.viewportExtent = swapChainExtent;
+
+    //CreateGraphicsPipeline_Internal(decalsGraphicPipelineInfo, shadowMapPipelineLayout, shadowMapPipeline, "shadowMapPipeline", "shadowMapPipelineLayout");
 }
 
 void HelloTriangleApp::CreateShadowMapFramebuffers()
@@ -1778,7 +1902,6 @@ void HelloTriangleApp::CreateColorPassDescriptorPool()
 
 void HelloTriangleApp::CreatePostProcessDescriptorPool()
 {
-//postProcessDescriptorPool
     std::array<VkDescriptorPoolSize, 3> descriptorPoolSize;
     descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
@@ -1794,6 +1917,27 @@ void HelloTriangleApp::CreatePostProcessDescriptorPool()
     descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     CreateDescriptorPool(descriptorPoolCreateInfo, postProcessDescriptorPool, "postProcessDescriptorPool");
+}
+
+void HelloTriangleApp::CreateDecalsDescriptorPool()
+{
+    std::array<VkDescriptorPoolSize, 4> descriptorPoolSize;
+    descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+    descriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorPoolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    descriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorPoolSize[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    descriptorPoolSize[3].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    VkDescriptorPoolCreateInfo decalsPoolCreateInfo{};
+    decalsPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    decalsPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSize.size());
+    decalsPoolCreateInfo.pPoolSizes = descriptorPoolSize.data();
+    decalsPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    CreateDescriptorPool(decalsPoolCreateInfo, decalsDescriptorPool, "decalsDescriptorPool");
 }
 
 void HelloTriangleApp::CreateShadowMapDescriptorSets()
@@ -1929,6 +2073,21 @@ void HelloTriangleApp::CreatePostProcessDescriptorSets()
     UpdatePostProcessDescriptorSets();
 }
 
+void HelloTriangleApp::CreateDecalsDescriptorSets()
+{
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, decalsDescriptorSetLayout);
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+    descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    descriptorSetAllocateInfo.descriptorPool = decalsDescriptorPool;
+    descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorSetAllocateInfo.pSetLayouts = layouts.data();
+
+    decalsDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    AllocateDescriptorSets(descriptorSetAllocateInfo, decalsDescriptorSets, "decalsDescriptorSets");
+
+    UpdateDecalsDescriptorSets();
+}
+
 void HelloTriangleApp::UpdatePostProcessDescriptorSets()
 {
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
@@ -1972,6 +2131,68 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
         writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         writeDescriptorSet[2].descriptorCount = 1;
         writeDescriptorSet[2].pImageInfo = &imageInfo;
+
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
+            writeDescriptorSet.data(), 0, nullptr);
+    }
+}
+
+void HelloTriangleApp::UpdateDecalsDescriptorSets()
+{
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        std::array<VkWriteDescriptorSet, 4> writeDescriptorSet{};
+        writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[0].dstSet = decalsDescriptorSets[i];
+        writeDescriptorSet[0].dstBinding = 0;
+        writeDescriptorSet[0].dstArrayElement = 0;
+        writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet[0].descriptorCount = 1;
+        writeDescriptorSet[0].pBufferInfo = &bufferInfo;
+
+        VkDescriptorImageInfo samplerInfo{};
+        samplerInfo.sampler = textureSampler;
+        samplerInfo.imageView = nullptr;
+        samplerInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[1].dstSet = decalsDescriptorSets[i];
+        writeDescriptorSet[1].dstBinding = 1;
+        writeDescriptorSet[1].dstArrayElement = 0;
+        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        writeDescriptorSet[1].descriptorCount = 1;
+        writeDescriptorSet[1].pImageInfo = &samplerInfo;
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageView = colorImageView;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.sampler = nullptr;
+
+        writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[2].dstSet = decalsDescriptorSets[i];
+        writeDescriptorSet[2].dstBinding = 2;
+        writeDescriptorSet[2].dstArrayElement = 0;
+        writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[2].descriptorCount = 1;
+        writeDescriptorSet[2].pImageInfo = &imageInfo;
+
+        VkDescriptorImageInfo imageInfo2{};
+        imageInfo.imageView = depthImageView;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.sampler = nullptr;
+
+        writeDescriptorSet[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[3].dstSet = decalsDescriptorSets[i];
+        writeDescriptorSet[3].dstBinding = 3;
+        writeDescriptorSet[3].dstArrayElement = 0;
+        writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[3].descriptorCount = 1;
+        writeDescriptorSet[3].pImageInfo = &imageInfo2;
 
         vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
             writeDescriptorSet.data(), 0, nullptr);
@@ -2579,6 +2800,7 @@ void HelloTriangleApp::RecreateSwapChain()
     UpdateDescriptorSets();
     UpdateComputeDescriptorSets();
     UpdatePostProcessDescriptorSets();
+    UpdateDecalsDescriptorSets();
 }
 
 void HelloTriangleApp::CleanupSwapChain()

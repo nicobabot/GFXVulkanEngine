@@ -98,11 +98,13 @@ private:
     VkRenderPass shadowMapRenderPass;
     VkRenderPass renderPass;
     VkRenderPass postProcessRenderPass;
+    VkRenderPass decalsRenderPass;
 
     VkDescriptorSetLayout shadowMapDescriptorSetLayout;
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSetLayout postProcessDescriptorSetLayout;
     VkDescriptorSetLayout computeDescriptorSetLayout;
+    VkDescriptorSetLayout decalsDescriptorSetLayout;
 
     VkPipelineLayout shadowMapPipelineLayout;
     VkPipeline shadowMapPipeline;
@@ -115,6 +117,9 @@ private:
 
     VkPipelineLayout brdfPipelineLayout;
     VkPipeline brdfPipeline;
+
+    VkPipelineLayout decalsPipelineLayout;
+    VkPipeline decalsPipeline;
 
     VkPipelineLayout computePipelineLayout;
     VkPipeline computePipeline;
@@ -183,11 +188,13 @@ private:
     VkDescriptorPool descriptorPool;
     VkDescriptorPool computeDescriptorPool;
     VkDescriptorPool postProcessDescriptorPool;
+    VkDescriptorPool decalsDescriptorPool;
 
     std::vector<VkDescriptorSet> shadowMapDescriptorSets;
     std::vector<VkDescriptorSet> descriptorSets;
     std::vector<VkDescriptorSet> computeDescriptorSets;
     std::vector<VkDescriptorSet> postProcessDescriptorSets;
+    std::vector<VkDescriptorSet> decalsDescriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkCommandBuffer> computeCommandBuffers;
@@ -238,19 +245,25 @@ private:
     void CreateShadowMapRenderPass();
     void CreateColorRenderPass();
     void CreatePostProcessRenderPass();
+    void CreateDecalsRenderPass();
     void CreateShadowMapDescriptorSetLayout();
     void CreateDescriptorSetLayouts();
     void CreatePostProcessDescriptorSetLayout();
+    void CreateDecalsDescriptorSetLayout();
     void CreateShadowMapDescriptorPool();
     void CreateColorPassDescriptorPool();
     void CreatePostProcessDescriptorPool();
+    void CreateDecalsDescriptorPool();
     void CreateShadowMapDescriptorSets();
     void CreateDescriptorSets();
     void CreatePostProcessDescriptorSets();
+    void CreateDecalsDescriptorSets();
     void UpdatePostProcessDescriptorSets();
+    void UpdateDecalsDescriptorSets();
     void UpdateDescriptorSets();
     void UpdateComputeDescriptorSets();
     void CreateGraphicsPipeline();
+    void CreateDecalsPipeline();
     void CreateShadowMapFramebuffers();
     void CreateFramebuffers();
     void CreatePostProcessFramebuffers();
