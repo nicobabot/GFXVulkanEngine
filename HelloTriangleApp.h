@@ -126,6 +126,7 @@ private:
     std::vector<VkFramebuffer> shadowMapFramebuffers;
     std::vector<VkFramebuffer> swapchainFramebuffers;
     std::vector<VkFramebuffer> postProcessFramebuffers;
+    std::vector<VkFramebuffer> decalsFramebuffers;
 
     VkCommandPool computeCommandPool;
 
@@ -172,6 +173,11 @@ private:
     VkDeviceMemory postProcessQuadBufferMemory;
     VkBuffer postProcessQuadIndicesBuffer;
     VkDeviceMemory postProcessQuadIndicesBufferMemory;
+
+    //Decals
+    VkImage decalsImage;
+    VkDeviceMemory decalsImageMemory;
+    VkImageView decalsImageView;
 
     //TODO: store vertex + index in the same buffer for memory aliasing
     //https://developer.nvidia.com/vulkan-memory-management 
@@ -267,6 +273,7 @@ private:
     void CreateShadowMapFramebuffers();
     void CreateFramebuffers();
     void CreatePostProcessFramebuffers();
+    void CreateDecalsFramebuffers();
     void CreateCommandPool();
     VkFormat FindSupportedFormat(std::vector<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
     VkFormat FindDepthFormat();
@@ -274,6 +281,7 @@ private:
     void CreateDepthResources();
     void CreateShadowMapResources();
     void CreatePostProcessResources();
+    void CreateDecalsResources();
     VkCommandBuffer BeginSingleTimeCommandBuffer();
     void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);

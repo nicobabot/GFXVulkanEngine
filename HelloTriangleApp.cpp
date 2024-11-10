@@ -60,9 +60,11 @@ void HelloTriangleApp::InitVulkan()
     CreateDepthResources();
     CreateShadowMapResources();
     CreatePostProcessResources();
+    CreateDecalsResources();
     CreateShadowMapFramebuffers();
     CreateFramebuffers();
     CreatePostProcessFramebuffers();
+    CreateDecalsFramebuffers();
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
@@ -1328,6 +1330,30 @@ void HelloTriangleApp::CreatePostProcessFramebuffers()
     }
 }
 
+void HelloTriangleApp::CreateDecalsFramebuffers()
+{
+    decalsFramebuffers.resize(swapChainImageViews.size());
+    for (int i = 0; i < decalsFramebuffers.size(); ++i)
+    {
+        std::array<VkImageView, 1> attachments
+        {
+            decalsImageView
+        };
+
+        VkFramebufferCreateInfo framebufferCreateInfo{};
+        framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferCreateInfo.renderPass = decalsRenderPass;
+        framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        framebufferCreateInfo.pAttachments = attachments.data();
+        framebufferCreateInfo.width = swapChainExtent.width;
+        framebufferCreateInfo.height = swapChainExtent.height;
+        framebufferCreateInfo.layers = 1;
+
+        std::string debugName = "DecalsFramebuffers" + std::to_string(i + 1);
+        CreateFrameBuffer(framebufferCreateInfo, decalsFramebuffers[i], debugName.c_str());
+    }
+}
+
 void HelloTriangleApp::CreateCommandPool()
 {
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(gfxCtx->physicalDevice);
@@ -1457,6 +1483,17 @@ void HelloTriangleApp::CreatePostProcessResources()
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         postProcessImage, postProcessImageMemory, "postProcessImage");
     postProcessImageView = CreateImageView(postProcessImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "postProcessImageView");
+}
+
+void HelloTriangleApp::CreateDecalsResources()
+{
+    VkFormat colorFormat = swapChainImageFormat;
+    CreateImage(swapChainExtent.width, swapChainExtent.height, 1, VK_SAMPLE_COUNT_1_BIT,
+        colorFormat, VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        decalsImage, decalsImageMemory, "decalsImage");
+    decalsImageView = CreateImageView(decalsImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1, "decalsImageView");
 }
 
 VkCommandBuffer HelloTriangleApp::BeginSingleTimeCommandBuffer()
@@ -2541,11 +2578,24 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdEndRenderPass(commandBuffer);
 
-    //TransitionImageLayout(resolveColorImage, swapChainImageFormat,
-    //    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, true,commandBuffer);
-        
-    //TransitionImageLayout(swapChainImages[(imageIndex + 1) % MAX_FRAMES_IN_FLIGHT], swapChainImageFormat,
-    //    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, true,commandBuffer);
+    //Decals renderpass
+
+    VkRenderPassBeginInfo decalRenderPassBeginInfo{};
+    decalRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    decalRenderPassBeginInfo.renderPass = decalsRenderPass;
+    decalRenderPassBeginInfo.framebuffer = decalsFramebuffers[imageIndex];
+    decalRenderPassBeginInfo.renderArea.offset = { 0,0 };
+    decalRenderPassBeginInfo.renderArea.extent = swapChainExtent;
+
+    std::array<VkClearValue, 1> decalClearValues{};
+    decalClearValues[0].color = { 1.0f,0.0f,1.0f,1.0f };
+    decalRenderPassBeginInfo.clearValueCount = static_cast<uint32_t>(decalClearValues.size());
+    decalRenderPassBeginInfo.pClearValues = decalClearValues.data();
+
+    vkCmdBeginRenderPass(commandBuffer, &decalRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    vkCmdEndRenderPass(commandBuffer);
+
 
     //Compute Blur
     //UpdateComputeDescriptorSets();
