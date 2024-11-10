@@ -17,8 +17,9 @@
 #include "ModelLoader.h"
 #include "DebugUtils.h"
 #include "GfxPipelineManager.h";
+
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
-    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, const char* VkPipelineName, const char* VkPipelineLayoutName);
+    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, bool enableBlending, const char* VkPipelineName, const char* VkPipelineLayoutName);
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
@@ -75,6 +76,7 @@ struct SwapChainSupportDetails
 };
 
 class GfxObject;
+class GfxDecal;
 
 //TODO: Add/Create memory allocator
 //https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/
@@ -186,6 +188,10 @@ private:
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
 
+    std::vector<VkBuffer> decalUniformBuffers;
+    std::vector<VkDeviceMemory> decalUniformBuffersMemory;
+    std::vector<void*> decalUniformBuffersMapped;
+
     //Compute
     std::vector<VkBuffer> shaderStorageBuffers;
     std::vector<VkDeviceMemory> shaderStorageBuffersMemory;
@@ -214,6 +220,7 @@ private:
     InputHandler inputHandler;
     GfxLoader gfxLoader;
     std::vector<GfxObject*> objects;
+    std::vector< GfxDecal*> decals;
 
 //Methods
 public:
@@ -295,6 +302,7 @@ private:
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory, const char* BufferName = "Unknown", const char* BufferMemoryName = "Unknown");
     void CreateUniformBuffers();
+    void CreateDecalUniformBuffers();
     void CreateShaderStorageBuffers();
     void CreatePostProcessingQuadBuffer();
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);

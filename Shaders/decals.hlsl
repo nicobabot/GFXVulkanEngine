@@ -1,9 +1,3 @@
-struct PSInput
-{
-    float4 position : SV_POSITION;
-    float4 fragPos : POSITION1;
-};
-
 struct UniformBufferObject
 {
     float4x4 modelM;
@@ -20,11 +14,24 @@ cbuffer MyConstantBuffer : register(b0)
    UniformBufferObject ubo;
 };
 
-//SamplerState mySampler : register(s1);
-//Texture2D imageTexture : register(t2);
-//Texture2D<float> depthShadowTexture : register(t3);
+struct DecalUniformBufferObject
+{
+    float4x4 decalProjectionMatrix;
+};
 
-PSInput VSMain(float4 inPosition : SV_POSITION)
+cbuffer DecalConstantBuffer : register(b1)
+{
+   DecalUniformBufferObject decalBO;
+};
+
+struct VS_OUT {
+    float4 pos : SV_POSITION;
+    float3 worldPos : TEXCOORD0;
+    float3 normal : TEXCOORD1;
+    float4 decalUV : TEXCOORD2;
+};
+
+VS_OUT VSMain(float4 inPosition : SV_POSITION)
 {
     PSInput result;
     float4x4 MVP = (mul(mul(ubo.projM, ubo.viewM),ubo.modelM)); 
@@ -32,6 +39,10 @@ PSInput VSMain(float4 inPosition : SV_POSITION)
     result.fragPos = mul(ubo.modelM, inPosition);
     return result;
 }
+
+//SamplerState mySampler : register(s1);
+//Texture2D imageTexture : register(t2);
+//Texture2D<float> depthShadowTexture : register(t3);
 
 float4 PSMain(PSInput input) : SV_TARGET
 {

@@ -71,6 +71,7 @@ void HelloTriangleApp::InitVulkan()
     gfxLoader.LoadModel();
     PopulateObjects();
     CreateUniformBuffers();
+    CreateDecalUniformBuffers();
     CreateShaderStorageBuffers();
     CreatePostProcessingQuadBuffer();
     CreateShadowMapDescriptorPool();
@@ -1018,28 +1019,35 @@ void HelloTriangleApp::CreateDecalsDescriptorSetLayout()
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     uboLayoutBinding.pImmutableSamplers = nullptr;
 
+    VkDescriptorSetLayoutBinding decalBOLayoutBinding{};
+    decalBOLayoutBinding.binding = 1;
+    decalBOLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    decalBOLayoutBinding.descriptorCount = 1;
+    decalBOLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    decalBOLayoutBinding.pImmutableSamplers = nullptr;
+
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 1;
+    samplerLayoutBinding.binding = 2;
     samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutBinding opaqueSampledImageLayoutBinding{};
-    opaqueSampledImageLayoutBinding.binding = 2;
+    opaqueSampledImageLayoutBinding.binding = 3;
     opaqueSampledImageLayoutBinding.descriptorCount = 1;
     opaqueSampledImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     opaqueSampledImageLayoutBinding.pImmutableSamplers = nullptr;
     opaqueSampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutBinding depthSampledImageLayoutBinding{};
-    depthSampledImageLayoutBinding.binding = 3;
+    depthSampledImageLayoutBinding.binding = 4;
     depthSampledImageLayoutBinding.descriptorCount = 1;
     depthSampledImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     depthSampledImageLayoutBinding.pImmutableSamplers = nullptr;
     depthSampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 4> bindings = { uboLayoutBinding,
+    std::array<VkDescriptorSetLayoutBinding, 5> bindings = { uboLayoutBinding, decalBOLayoutBinding,
         samplerLayoutBinding, opaqueSampledImageLayoutBinding, depthSampledImageLayoutBinding };
     VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
     descriptorSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1253,7 +1261,7 @@ void HelloTriangleApp::CreateDecalsPipeline()
     decalsGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     decalsGraphicPipelineInfo.viewportExtent = swapChainExtent;
 
-    //CreateGraphicsPipeline_Internal(decalsGraphicPipelineInfo, shadowMapPipelineLayout, shadowMapPipeline, "shadowMapPipeline", "shadowMapPipelineLayout");
+    CreateGraphicsPipeline_Internal(decalsGraphicPipelineInfo, decalsPipelineLayout, decalsPipeline, true, "decalsPipeline", "decalsPipelineLayout");
 }
 
 void HelloTriangleApp::CreateShadowMapFramebuffers()
@@ -1799,6 +1807,27 @@ void HelloTriangleApp::CreateUniformBuffers()
 
 }
 
+void HelloTriangleApp::CreateDecalUniformBuffers()
+{
+    VkDeviceSize bufferSize = sizeof(DecalUniformBufferObject);
+
+    decalUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    decalUniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    decalUniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+    std::string uniformBufferDebugName = "DecalUniformBuffer";
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        uniformBufferDebugName += std::to_string(i + 1);
+
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            decalUniformBuffers[i], decalUniformBuffersMemory[i], uniformBufferDebugName.c_str());
+
+        vkMapMemory(gfxCtx->logicalDevice, decalUniformBuffersMemory[i], 0, bufferSize, 0, &decalUniformBuffersMapped[i]);
+    }
+}
+
 void HelloTriangleApp::CreateShaderStorageBuffers()
 {
     shaderStorageBuffers.resize(MAX_FRAMES_IN_FLIGHT);
@@ -2183,7 +2212,7 @@ void HelloTriangleApp::UpdateDecalsDescriptorSets()
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
-        std::array<VkWriteDescriptorSet, 4> writeDescriptorSet{};
+        std::array<VkWriteDescriptorSet, 5> writeDescriptorSet{};
         writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSet[0].dstSet = decalsDescriptorSets[i];
         writeDescriptorSet[0].dstBinding = 0;
@@ -2192,34 +2221,34 @@ void HelloTriangleApp::UpdateDecalsDescriptorSets()
         writeDescriptorSet[0].descriptorCount = 1;
         writeDescriptorSet[0].pBufferInfo = &bufferInfo;
 
-        VkDescriptorImageInfo samplerInfo{};
-        samplerInfo.sampler = textureSampler;
-        samplerInfo.imageView = nullptr;
-        samplerInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkDescriptorBufferInfo decalBufferInfo{};
+        bufferInfo.buffer = decalUniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
 
         writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSet[1].dstSet = decalsDescriptorSets[i];
         writeDescriptorSet[1].dstBinding = 1;
         writeDescriptorSet[1].dstArrayElement = 0;
-        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writeDescriptorSet[1].descriptorCount = 1;
-        writeDescriptorSet[1].pImageInfo = &samplerInfo;
+        writeDescriptorSet[1].pBufferInfo = &decalBufferInfo;
 
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageView = colorImageView;
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.sampler = nullptr;
+        VkDescriptorImageInfo samplerInfo{};
+        samplerInfo.sampler = textureSampler;
+        samplerInfo.imageView = nullptr;
+        samplerInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
         writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSet[2].dstSet = decalsDescriptorSets[i];
         writeDescriptorSet[2].dstBinding = 2;
         writeDescriptorSet[2].dstArrayElement = 0;
-        writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
         writeDescriptorSet[2].descriptorCount = 1;
-        writeDescriptorSet[2].pImageInfo = &imageInfo;
+        writeDescriptorSet[2].pImageInfo = &samplerInfo;
 
-        VkDescriptorImageInfo imageInfo2{};
-        imageInfo.imageView = depthImageView;
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageView = colorImageView;
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         imageInfo.sampler = nullptr;
 
@@ -2229,7 +2258,20 @@ void HelloTriangleApp::UpdateDecalsDescriptorSets()
         writeDescriptorSet[3].dstArrayElement = 0;
         writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         writeDescriptorSet[3].descriptorCount = 1;
-        writeDescriptorSet[3].pImageInfo = &imageInfo2;
+        writeDescriptorSet[3].pImageInfo = &imageInfo;
+
+        VkDescriptorImageInfo imageInfo2{};
+        imageInfo.imageView = depthImageView;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.sampler = nullptr;
+
+        writeDescriptorSet[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[4].dstSet = decalsDescriptorSets[i];
+        writeDescriptorSet[4].dstBinding = 4;
+        writeDescriptorSet[4].dstArrayElement = 0;
+        writeDescriptorSet[4].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[4].descriptorCount = 1;
+        writeDescriptorSet[4].pImageInfo = &imageInfo2;
 
         vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
             writeDescriptorSet.data(), 0, nullptr);
@@ -2593,6 +2635,15 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     decalRenderPassBeginInfo.pClearValues = decalClearValues.data();
 
     vkCmdBeginRenderPass(commandBuffer, &decalRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    for (GfxDecal* decal : decals) 
+    {
+        //Update uniform buffer with decal projection matrix
+
+        //Bind texture & sampler of specific decal
+
+        //VkCmdDraw
+    }
 
     vkCmdEndRenderPass(commandBuffer);
 

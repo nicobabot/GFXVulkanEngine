@@ -163,3 +163,8 @@ struct UniformBufferObject
 	float deltaTime;
 	alignas(16) glm::mat4 lightSpaceMatrix;
 };
+
+struct DecalUniformBufferObject
+{
+	alignas(16) glm::mat4 decalProjectionMatrix;
+};

@@ -242,7 +242,7 @@ void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayo
 }
 
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
-    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, const char* VkPipelineName, const char* VkPipelineLayoutName)
+    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, bool enableBlending, const char* VkPipelineName, const char* VkPipelineLayoutName)
 
 {
     //TODO: this should come as argument too
@@ -340,6 +340,7 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
     //finalColor.rgb = newAlpha * newColor + (1 - newAlpha) * oldColor;
     colorBlendStateAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
     colorBlendStateAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendStateAttachment.dstAlphaBlendFactor = enableBlending ? VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA : VK_BLEND_FACTOR_ZERO;
     colorBlendStateAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
     //finalColor.a = newAlpha.a;
 

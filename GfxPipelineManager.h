@@ -26,7 +26,7 @@ void TransitionImageLayout(VkImage image, VkFormat format,
 	VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, bool transitionToCompute = false, VkCommandBuffer commandBuffer = nullptr);
 
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
-	VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, const char* VkPipelineName = "Unknown", const char* VkPipelineLayoutName = "Unknown");
+	VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, bool enableBlending = false, const char* VkPipelineName = "Unknown", const char* VkPipelineLayoutName = "Unknown");
 
 void CreateBuffer_Internal(VkDeviceSize size, VkBufferUsageFlags usageFlags,
 	VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory, const char* BufferName = "Unknown", const char* BufferMemoryName = "Unknown");
