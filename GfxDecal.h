@@ -1,25 +1,29 @@
 #pragma once
 #include"gfxMaths.h"
-class GfxDecal
+
+struct GfxDecalInfo 
 {
 	glm::vec3 decalPosition;
 	glm::vec3 decalDirection;
 	glm::vec3 decalUp;
-	float decalWidth; 
-	float decalHeight; 
+	float decalWidth;
+	float decalHeight;
 	float decalDepth;
+	VkImageView imageView;
+};
+
+class GfxDecal
+{	
+	public:
+	GfxDecalInfo info;
 	//Projection matrix
 	glm::mat4 projectionMat;
-	// The texture of the decal and sampler
-	VkImageView imageView;
-	VkSampler sampler;
 
 public:
-	GfxDecal(const glm::vec3& decalPosition, const glm::vec3& decalDirection, const glm::vec3& decalUp, float decalWidth, float decalHeight, float decalDepth, const VkImageView& imageView, const VkSampler& sampler)
-		: decalPosition(decalPosition), decalDirection(decalDirection), decalUp(decalUp), decalWidth(decalWidth), decalHeight(decalHeight), decalDepth(decalDepth), imageView(imageView), sampler(sampler)
-		
+	GfxDecal(GfxDecalInfo info)
+		: info(info)
 	{
-		projectionMat = CalculateDecalProjectionMatrix(decalPosition, decalDirection, decalUp, decalWidth, decalHeight, decalDepth);
+		projectionMat = CalculateDecalProjectionMatrix(info.decalPosition, info.decalDirection, info.decalUp, info.decalWidth, info.decalHeight, info.decalDepth);
 	}
 
 private:

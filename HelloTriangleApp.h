@@ -17,9 +17,10 @@
 #include "ModelLoader.h"
 #include "DebugUtils.h"
 #include "GfxPipelineManager.h";
+#include "GfxDecal.h"
 
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
-    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, bool enableBlending, const char* VkPipelineName, const char* VkPipelineLayoutName);
+    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, bool enableBlending, bool enableWriteDepthTest, const char* VkPipelineName, const char* VkPipelineLayoutName);
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
@@ -76,7 +77,8 @@ struct SwapChainSupportDetails
 };
 
 class GfxObject;
-class GfxDecal;
+//class GfxDecal;
+//struct GfxDecalInfo;
 
 //TODO: Add/Create memory allocator
 //https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/
@@ -272,7 +274,7 @@ private:
     void CreatePostProcessDescriptorSets();
     void CreateDecalsDescriptorSets();
     void UpdatePostProcessDescriptorSets();
-    void UpdateDecalsDescriptorSets();
+    void UpdateDecalsDescriptorSets(const GfxDecal &decal);
     void UpdateDescriptorSets();
     void UpdateComputeDescriptorSets();
     void CreateGraphicsPipeline();
@@ -299,6 +301,7 @@ private:
     void CreateTextureImageView();
     void CreateTextureSampler();
     void PopulateObjects();
+    void PopulateDecals();
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory, const char* BufferName = "Unknown", const char* BufferMemoryName = "Unknown");
     void CreateUniformBuffers();
@@ -315,6 +318,7 @@ private:
     VkShaderModule CreateShaderModule(const std::vector<char>& code, const char* Name = "Unknown");
     void MainLoop();
     void UpdateUniformBuffers(uint32_t currentImage);
+    void UpdateDecalUniformBuffer(uint32_t currentBufferId, const GfxDecal& decal);
     void DrawFrame();
     void EndFrameLayoutTransitions(VkCommandBuffer commandBuffer);
     void EndFrame();

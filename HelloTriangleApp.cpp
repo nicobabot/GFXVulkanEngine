@@ -4,7 +4,6 @@
 #include "GfxContext.h"
 #include "BasicPolygons.h"
 
-
 void HelloTriangleApp::Run()
 {
     gfxCtx = new GfxContext();
@@ -70,6 +69,7 @@ void HelloTriangleApp::InitVulkan()
     CreateTextureSampler();
     gfxLoader.LoadModel();
     PopulateObjects();
+    PopulateDecals();
     CreateUniformBuffers();
     CreateDecalUniformBuffers();
     CreateShaderStorageBuffers();
@@ -852,7 +852,7 @@ void HelloTriangleApp::CreateDecalsRenderPass()
     VkAttachmentDescription colorAttachmentDescr{};
     colorAttachmentDescr.format = swapChainImageFormat;
     colorAttachmentDescr.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     colorAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1033,12 +1033,12 @@ void HelloTriangleApp::CreateDecalsDescriptorSetLayout()
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    VkDescriptorSetLayoutBinding opaqueSampledImageLayoutBinding{};
-    opaqueSampledImageLayoutBinding.binding = 3;
-    opaqueSampledImageLayoutBinding.descriptorCount = 1;
-    opaqueSampledImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    opaqueSampledImageLayoutBinding.pImmutableSamplers = nullptr;
-    opaqueSampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    VkDescriptorSetLayoutBinding decalSampledImageLayoutBinding{};
+    decalSampledImageLayoutBinding.binding = 3;
+    decalSampledImageLayoutBinding.descriptorCount = 1;
+    decalSampledImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    decalSampledImageLayoutBinding.pImmutableSamplers = nullptr;
+    decalSampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutBinding depthSampledImageLayoutBinding{};
     depthSampledImageLayoutBinding.binding = 4;
@@ -1048,7 +1048,7 @@ void HelloTriangleApp::CreateDecalsDescriptorSetLayout()
     depthSampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     std::array<VkDescriptorSetLayoutBinding, 5> bindings = { uboLayoutBinding, decalBOLayoutBinding,
-        samplerLayoutBinding, opaqueSampledImageLayoutBinding, depthSampledImageLayoutBinding };
+        samplerLayoutBinding, decalSampledImageLayoutBinding, depthSampledImageLayoutBinding };
     VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
     descriptorSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -1261,7 +1261,7 @@ void HelloTriangleApp::CreateDecalsPipeline()
     decalsGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     decalsGraphicPipelineInfo.viewportExtent = swapChainExtent;
 
-    CreateGraphicsPipeline_Internal(decalsGraphicPipelineInfo, decalsPipelineLayout, decalsPipeline, true, "decalsPipeline", "decalsPipelineLayout");
+    CreateGraphicsPipeline_Internal(decalsGraphicPipelineInfo, decalsPipelineLayout, decalsPipeline, true, false, "decalsPipeline", "decalsPipelineLayout");
 }
 
 void HelloTriangleApp::CreateShadowMapFramebuffers()
@@ -1345,7 +1345,8 @@ void HelloTriangleApp::CreateDecalsFramebuffers()
     {
         std::array<VkImageView, 1> attachments
         {
-            decalsImageView
+            colorImageView
+            //decalsImageView
         };
 
         VkFramebufferCreateInfo framebufferCreateInfo{};
@@ -1779,6 +1780,19 @@ void HelloTriangleApp::PopulateObjects()
     objects.push_back(new GfxPlane(graphicsPipeline, graphicsPipelineLayout));
 }
 
+void HelloTriangleApp::PopulateDecals()
+{
+    GfxDecalInfo decalInfo;
+    decalInfo.decalPosition = glm::vec3(0, 0, 0);
+    decalInfo.decalDirection = glm::vec3(0, 1, 0);
+    decalInfo.decalUp = glm::vec3(0, 1, 0);
+    decalInfo.decalDepth = 1;
+    decalInfo.decalHeight = 5;
+    decalInfo.decalWidth = 10;
+    decalInfo.imageView = textureImageView;
+    decals.push_back(new GfxDecal( decalInfo ));
+}
+
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
     VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory, const char* BufferName, const char* BufferMemoryName)
 {
@@ -2150,8 +2164,6 @@ void HelloTriangleApp::CreateDecalsDescriptorSets()
 
     decalsDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
     AllocateDescriptorSets(descriptorSetAllocateInfo, decalsDescriptorSets, "decalsDescriptorSets");
-
-    UpdateDecalsDescriptorSets();
 }
 
 void HelloTriangleApp::UpdatePostProcessDescriptorSets()
@@ -2203,7 +2215,7 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
     }
 }
 
-void HelloTriangleApp::UpdateDecalsDescriptorSets()
+void HelloTriangleApp::UpdateDecalsDescriptorSets(const GfxDecal& decal)
 {
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
@@ -2248,7 +2260,7 @@ void HelloTriangleApp::UpdateDecalsDescriptorSets()
         writeDescriptorSet[2].pImageInfo = &samplerInfo;
 
         VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageView = colorImageView;
+        imageInfo.imageView = decal.info.imageView;
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         imageInfo.sampler = nullptr;
 
@@ -2634,19 +2646,42 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     decalRenderPassBeginInfo.clearValueCount = static_cast<uint32_t>(decalClearValues.size());
     decalRenderPassBeginInfo.pClearValues = decalClearValues.data();
 
-    vkCmdBeginRenderPass(commandBuffer, &decalRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    for (GfxDecal* decal : decals) 
+    if(!decals.empty())
     {
-        //Update uniform buffer with decal projection matrix
+        vkCmdBeginRenderPass(commandBuffer, &decalRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-        //Bind texture & sampler of specific decal
+        for (const GfxDecal *decal : decals) 
+        {
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                decalsPipeline);
 
-        //VkCmdDraw
+            VkViewport decalViewport{};
+            decalViewport.x = 0.0f;
+            decalViewport.y = 0.0f;
+            decalViewport.width = static_cast<float>(swapChainExtent.width);
+            decalViewport.height = static_cast<float>(swapChainExtent.height);
+            decalViewport.minDepth = 0.0f;
+            decalViewport.maxDepth = 1.0f;
+            vkCmdSetViewport(commandBuffer, 0, 1, &decalViewport);
+
+            VkRect2D decalScissor{};
+            decalScissor.extent = swapChainExtent;
+            decalScissor.offset = { 0, 0 };
+            vkCmdSetScissor(commandBuffer, 0, 1, &decalScissor);
+
+            //Update uniform buffer with decal projection matrix
+            UpdateDecalUniformBuffer(currentFrame, *decal);
+
+            //Bind texture & sampler of specific decal
+            UpdateDecalsDescriptorSets(*decal);
+
+            //VkCmdDraw
+            vkCmdDraw(commandBuffer, 4, 1, 0, 0);
+        }
+
+        vkCmdEndRenderPass(commandBuffer);
     }
-
-    vkCmdEndRenderPass(commandBuffer);
-
 
     //Compute Blur
     //UpdateComputeDescriptorSets();
@@ -2772,6 +2807,13 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     ubo.lightSpaceMatrix =  lightProjection * lightView;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+}
+
+void HelloTriangleApp::UpdateDecalUniformBuffer(uint32_t currentBufferId, const GfxDecal& decal)
+{
+    DecalUniformBufferObject ubo{};
+    ubo.decalProjectionMatrix = decal.projectionMat;
+    memcpy(decalUniformBuffersMapped[currentBufferId], &ubo, sizeof(ubo));
 }
 
 void HelloTriangleApp::DrawFrame()
@@ -2901,7 +2943,6 @@ void HelloTriangleApp::RecreateSwapChain()
     UpdateDescriptorSets();
     UpdateComputeDescriptorSets();
     UpdatePostProcessDescriptorSets();
-    UpdateDecalsDescriptorSets();
 }
 
 void HelloTriangleApp::CleanupSwapChain()

@@ -242,7 +242,7 @@ void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayo
 }
 
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
-    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, bool enableBlending, const char* VkPipelineName, const char* VkPipelineLayoutName)
+    VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, bool enableBlending, bool enableWriteDepthTest, const char* VkPipelineName, const char* VkPipelineLayoutName)
 
 {
     //TODO: this should come as argument too
@@ -319,7 +319,7 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
     depthStencilStateAttachment.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencilStateAttachment.depthTestEnable = VK_TRUE;
     //depthStencilStateAttachment.stencilTestEnable = VK_TRUE; -> WRONG!
-    depthStencilStateAttachment.depthWriteEnable = VK_TRUE;
+    depthStencilStateAttachment.depthWriteEnable = enableWriteDepthTest ? VK_TRUE : VK_FALSE;
     depthStencilStateAttachment.depthCompareOp = VK_COMPARE_OP_LESS;
     depthStencilStateAttachment.depthBoundsTestEnable = VK_FALSE;
     depthStencilStateAttachment.minDepthBounds = 0.0f;
@@ -339,7 +339,6 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
     colorBlendStateAttachment.colorBlendOp = VK_BLEND_OP_ADD;
     //finalColor.rgb = newAlpha * newColor + (1 - newAlpha) * oldColor;
     colorBlendStateAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendStateAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
     colorBlendStateAttachment.dstAlphaBlendFactor = enableBlending ? VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA : VK_BLEND_FACTOR_ZERO;
     colorBlendStateAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
     //finalColor.a = newAlpha.a;

@@ -28,16 +28,14 @@ cbuffer DecalConstantBuffer : register(b1)
 struct VS_OUT {
     float4 pos : SV_POSITION;
     float3 worldPos : TEXCOORD0;
-    float3 normal : TEXCOORD1;
-    float4 decalUV : TEXCOORD2;
 };
 
 VS_OUT VSMain(float4 inPosition : SV_POSITION)
 {
-    PSInput result;
+    VS_OUT result;
     float4x4 MVP = (mul(mul(ubo.projM, ubo.viewM),ubo.modelM));
-    result.position = mul(MVP, inPosition);
-    result.fragPos = mul(ubo.modelM, inPosition);
+    result.pos = mul(MVP, inPosition);
+    result.worldPos = mul(ubo.modelM, inPosition);
     return result;
 }
 
@@ -45,7 +43,7 @@ VS_OUT VSMain(float4 inPosition : SV_POSITION)
 
 
 
-float4 PSMain(PSInput input) : SV_TARGET
+float4 PSMain(VS_OUT input) : SV_TARGET
 {
     return float4(1,0,0,1);
 }
