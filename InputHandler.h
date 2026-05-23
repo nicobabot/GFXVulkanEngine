@@ -22,7 +22,7 @@ class InputHandler
 	
 	float yaw = -90.0f;   // Start looking forward
 	float pitch = 0.0f;
-	float speed = 0.05f;
+	float speed = 0.02f;
 	float mouseSensitivity = 0.1f;
 	
 	double lastMouseX = 400.0;
