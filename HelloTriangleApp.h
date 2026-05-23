@@ -20,8 +20,8 @@
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
     VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, const char* VkPipelineName, const char* VkPipelineLayoutName);
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 800
+#define WINDOW_WIDTH 1920
+#define WINDOW_HEIGHT 1080
 #define WINDOW_NAME "GFXVulkanEngine"
 #define APP_NAME "GFXVulkanEngine"
 #define APP_VERSION VK_MAKE_VERSION(0,0,1)
