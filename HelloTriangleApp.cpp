@@ -2613,6 +2613,7 @@ void HelloTriangleApp::RecreateSwapChain()
     CreateDepthResources();
     CreateShadowMapFramebuffers();
     CreateFramebuffers();
+    CreatePostProcessFramebuffers();
     UpdateDescriptorSets();
     UpdateComputeDescriptorSets();
     UpdatePostProcessDescriptorSets();
