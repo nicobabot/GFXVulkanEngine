@@ -2638,6 +2638,7 @@ void HelloTriangleApp::RecreateSwapChain()
     CreateShadowMapResources();
     CreateColorResources();
     CreateDepthResources();
+    CreatePostProcessResources();
     CreateShadowMapFramebuffers();
     CreateFramebuffers();
     CreatePostProcessFramebuffers();
