@@ -155,6 +155,7 @@
     <ClCompile Include="GfxObject.cpp" />
     <ClCompile Include="GfxPipelineManager.cpp" />
     <ClCompile Include="HelloTriangleApp.cpp" />
+    <ClCompile Include="ImguiHandler.cpp" />
     <ClCompile Include="Imgui\imgui.cpp" />
     <ClCompile Include="Imgui\imgui_demo.cpp" />
     <ClCompile Include="Imgui\imgui_draw.cpp" />
@@ -175,6 +176,7 @@
     <ClInclude Include="GfxObject.h" />
     <ClInclude Include="GfxPipelineManager.h" />
     <ClInclude Include="HelloTriangleApp.h" />
+    <ClInclude Include="ImguiHandler.h" />
     <ClInclude Include="Imgui\imconfig.h" />
     <ClInclude Include="Imgui\imgui.h" />
     <ClInclude Include="Imgui\imgui_impl_glfw.h" />

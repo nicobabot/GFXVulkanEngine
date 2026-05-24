@@ -3,16 +3,16 @@
 #include "ComputeObjectsManager.h"
 #include "GfxContext.h"
 #include "BasicPolygons.h"
-#include "Imgui/imgui.h"
-#include "Imgui/imgui_impl_glfw.h"
-#include "Imgui/imgui_impl_vulkan.h"
+#include "ImguiHandler.h"
 
 
 void HelloTriangleApp::Run()
 {
     gfxCtx = new GfxContext();
     InitWindow();
+    ImguiHandler::InitWindow(window);
     InitVulkan();
+    InitImguiVulkan();
     MainLoop();
     Cleanup();
 }
@@ -35,19 +35,6 @@ void HelloTriangleApp::InitWindow()
     window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME, nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-
-    InitImgui();
-}
-
-void HelloTriangleApp::InitImgui()
-{
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
-    ImGui_ImplGlfw_InitForVulkan(window, true);
 }
 
 static void check_vk_result(VkResult err)
@@ -104,34 +91,24 @@ void HelloTriangleApp::InitVulkan()
     SetDescriptorsToObjects();
     UpdateComputeDescriptorSets();
     inputHandler.Init();
+}
 
-    VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 };
-    VkDescriptorPoolCreateInfo pool_info{};
-    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    pool_info.maxSets = 10;
-    pool_info.poolSizeCount = 1;
-    pool_info.pPoolSizes = &pool_size;
-    vkCreateDescriptorPool(gfxCtx->logicalDevice, &pool_info, nullptr, &descriptorPool);
-
+void HelloTriangleApp::InitImguiVulkan()
+{
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(gfxCtx->physicalDevice);
-    ImGui_ImplVulkan_InitInfo init_info{};
-    init_info.Instance = instance;
-    init_info.PhysicalDevice = gfxCtx->physicalDevice;
-    init_info.Device = gfxCtx->logicalDevice;
-    init_info.QueueFamily = queueFamilyIndices.presentationFamily.value();
-    init_info.Queue = presentationQueue;
-    init_info.DescriptorPool = descriptorPool;  // see note below
-    //init_info.DescriptorPool = postProcessDescriptorPool;  // see note below
-    init_info.MinImageCount = 2;               // typically swapchain min
-    init_info.ImageCount = swapChainImages.size();
-    init_info.PipelineInfoMain.RenderPass = postProcessRenderPass;
-    init_info.PipelineInfoMain.Subpass = 0;
-    init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    init_info.CheckVkResultFn = check_vk_result;
-    init_info.Allocator = nullptr;
+    ImguiVulkanObjects imguiVkObjects;
+    imguiVkObjects.instance = instance;
+    imguiVkObjects.logicalDevice = gfxCtx->logicalDevice;
+    imguiVkObjects.physicalDevice = gfxCtx->physicalDevice;
+    imguiVkObjects.queue = presentationQueue;
+    imguiVkObjects.queueFamilyIndices = &queueFamilyIndices;
+    imguiVkObjects.minImageCount = 2;
+    imguiVkObjects.imageCount = swapChainImages.size();
+    imguiVkObjects.renderPass = postProcessRenderPass;
+    imguiVkObjects.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    imguiVkObjects.allocator = nullptr;
 
-    ImGui_ImplVulkan_Init(&init_info);
+    ImguiHandler::InitVulkan(imguiVkObjects);
 }
 
 void HelloTriangleApp::CreateInstance()
@@ -2426,13 +2403,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(quadIndices.size()), 1, 0, 0, 0);
 
-    // --- Your ImGui UI code here ---
-    ImGui::ShowDemoWindow();  // useful for testing
-    // --- Record to command buffer ---
-    ImGui::Render();
-    ImDrawData* draw_data = ImGui::GetDrawData();
-    ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
-
+    ImguiHandler::Draw(commandBuffer);
 
     // End the render pass
     vkCmdEndRenderPass(commandBuffer);
@@ -2472,9 +2443,7 @@ void HelloTriangleApp::MainLoop()
 {
     while (!glfwWindowShouldClose(window) && !inputHandler.WantToExit()) 
     {
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+        ImguiHandler::NewFrame();
 
         glfwPollEvents();
         inputHandler.ReactToEvents(*window);
@@ -2725,16 +2694,12 @@ void HelloTriangleApp::CleanupBuffers()
     }
 }
 
-void HelloTriangleApp::ImguiCleanup()
-{
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-}
-
 void HelloTriangleApp::Cleanup() 
 {
-    ImguiCleanup();
+    // Ensure device is idle before destroying Vulkan resources (including ImGui objects)
+    vkDeviceWaitIdle(gfxCtx->logicalDevice);
+
+    ImguiHandler::Cleanup();
 
     CleanupSwapChain();
 

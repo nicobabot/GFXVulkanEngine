@@ -16,6 +16,18 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{aa25ff09-e4c2-4f20-b93e-a25dce1be73e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Imgui">
+      <UniqueIdentifier>{5d7f7365-436e-4a66-bb67-a82514e414f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Imgui">
+      <UniqueIdentifier>{cc5daf46-5a7d-46d4-973a-14cce8e5cb72}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Imgui\External">
+      <UniqueIdentifier>{942b6aff-93d8-4df7-ab76-b4f3316fc20c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Imgui\External">
+      <UniqueIdentifier>{6912d57a-30c1-422d-9f8b-3b5f63a3f92d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -46,32 +58,32 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Imgui\imgui.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Imgui\External</Filter>
     </ClCompile>
     <ClCompile Include="Imgui\imgui_demo.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Imgui\External</Filter>
     </ClCompile>
     <ClCompile Include="Imgui\imgui_draw.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Imgui\External</Filter>
     </ClCompile>
     <ClCompile Include="Imgui\imgui_impl_glfw.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Imgui\External</Filter>
     </ClCompile>
     <ClCompile Include="Imgui\imgui_impl_vulkan.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Imgui\External</Filter>
     </ClCompile>
     <ClCompile Include="Imgui\imgui_tables.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Imgui\External</Filter>
     </ClCompile>
     <ClCompile Include="Imgui\imgui_widgets.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Imgui\External</Filter>
+    </ClCompile>
+    <ClCompile Include="ImguiHandler.cpp">
+      <Filter>Source Files\Imgui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HelloTriangleApp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="gfxMaths.h">
@@ -108,28 +120,34 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Imgui\imconfig.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Imgui\External</Filter>
     </ClInclude>
     <ClInclude Include="Imgui\imgui.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Imgui\External</Filter>
     </ClInclude>
     <ClInclude Include="Imgui\imgui_impl_glfw.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Imgui\External</Filter>
     </ClInclude>
     <ClInclude Include="Imgui\imgui_impl_vulkan.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Imgui\External</Filter>
     </ClInclude>
     <ClInclude Include="Imgui\imgui_internal.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Imgui\External</Filter>
     </ClInclude>
     <ClInclude Include="Imgui\imstb_rectpack.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Imgui\External</Filter>
     </ClInclude>
     <ClInclude Include="Imgui\imstb_textedit.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Imgui\External</Filter>
     </ClInclude>
     <ClInclude Include="Imgui\imstb_truetype.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Imgui\External</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils.h">
+      <Filter>Header Files\Imgui\External</Filter>
+    </ClInclude>
+    <ClInclude Include="ImguiHandler.h">
+      <Filter>Header Files\Imgui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
