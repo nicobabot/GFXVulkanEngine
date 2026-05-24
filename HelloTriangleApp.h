@@ -210,6 +210,7 @@ public:
 private:
     void InitWindow();
     void InitVulkan();
+    void InitImgui();
     void CreateInstance();
     bool InstanceHasRequiredExtensions(std::vector<const char*> requiredExtensions);
     bool CheckValidationLayerSupport(std::vector<const char*> validationLayers);
@@ -292,6 +293,7 @@ private:
     void RecreateSwapChain();
     void CleanupSwapChain();
     void CleanupBuffers();
+    void ImguiCleanup();
     void Cleanup();
 };
 
