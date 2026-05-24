@@ -2734,6 +2734,8 @@ void HelloTriangleApp::ImguiCleanup()
 
 void HelloTriangleApp::Cleanup() 
 {
+    ImguiCleanup();
+
     CleanupSwapChain();
 
     vkDestroySampler(gfxCtx->logicalDevice, textureSampler, nullptr);
@@ -2781,8 +2783,6 @@ void HelloTriangleApp::Cleanup()
     }
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
-
-    ImguiCleanup();
 
     glfwDestroyWindow(window);
     glfwTerminate();
