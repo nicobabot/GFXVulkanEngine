@@ -1991,7 +1991,7 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
         writeDescriptorSet[1].pImageInfo = &samplerInfo;
 
         VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageView = blurImageView;
+        imageInfo.imageView = ImguiHandler::isBlurEnabled ? blurImageView : resolveColorImageView;
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         imageInfo.sampler = nullptr;
 
@@ -2357,26 +2357,29 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     DebugUtils::getInstance().EndDebugLabel(commandBuffer);
 
-    //Compute Blur
-    DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "BLUR COMPUTE");
+    if(ImguiHandler::isBlurEnabled)
+    {
+        //Compute Blur
+        DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "BLUR COMPUTE");
 
-    //UpdateComputeDescriptorSets();
+        //UpdateComputeDescriptorSets();
 
-    TransitionImageLayout(blurImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, false, commandBuffer);
+        TransitionImageLayout(blurImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, false, commandBuffer);
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-        computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+            computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, 0);
 
-    unsigned int groupCountX = (swapChainExtent.width + 15) / 16;
-    unsigned int groupCountY = (swapChainExtent.height + 15) / 16;
-    vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
+        unsigned int groupCountX = (swapChainExtent.width + 15) / 16;
+        unsigned int groupCountY = (swapChainExtent.height + 15) / 16;
+        vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
 
-    TransitionImageLayout(blurImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, false,commandBuffer);
+        TransitionImageLayout(blurImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, false,commandBuffer);
 
-    DebugUtils::getInstance().EndDebugLabel(commandBuffer);
+        DebugUtils::getInstance().EndDebugLabel(commandBuffer);
+    }
 
     //Post process
     DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "POST-PROCESS PASS");
@@ -2458,6 +2461,8 @@ void HelloTriangleApp::MainLoop()
         inputHandler.ReactToEvents(*window);
 
         DrawFrame();
+
+        CheckRenderSettings();
     }
 
     vkDeviceWaitIdle(gfxCtx->logicalDevice);
@@ -2586,6 +2591,15 @@ void HelloTriangleApp::DrawFrame()
     }
 
     EndFrame();
+}
+
+void HelloTriangleApp::CheckRenderSettings()
+{
+    if (ImguiHandler::lastBlurSetting != ImguiHandler::isBlurEnabled)
+    {
+        ImguiHandler::lastBlurSetting = ImguiHandler::isBlurEnabled;
+        RecreateSwapChain();
+    }
 }
 
 void HelloTriangleApp::EndFrameLayoutTransitions(VkCommandBuffer commandBuffer)

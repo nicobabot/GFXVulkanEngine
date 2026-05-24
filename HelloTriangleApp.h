@@ -25,7 +25,7 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
 #define WINDOW_NAME "GFXVulkanEngine"
 #define APP_NAME "GFXVulkanEngine"
 #define APP_VERSION VK_MAKE_VERSION(0,0,1)
-#define VULKAN_API_VERSION VK_API_VERSION_1_0
+#define VULKAN_API_VERSION VK_API_VERSION_1_3
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
@@ -288,6 +288,7 @@ private:
     void MainLoop();
     void UpdateUniformBuffers(uint32_t currentImage);
     void DrawFrame();
+    void CheckRenderSettings();
     void EndFrameLayoutTransitions(VkCommandBuffer commandBuffer);
     void EndFrame();
     void RecreateSwapChain();

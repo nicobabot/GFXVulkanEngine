@@ -4,6 +4,9 @@
 
 ImguiVulkanObjects ImguiHandler::vkObjects{};
 VkDescriptorPool ImguiHandler::imguiDescriptorPool = VK_NULL_HANDLE;
+bool ImguiHandler::isOpen = true;
+bool ImguiHandler::lastBlurSetting = true;
+bool ImguiHandler::isBlurEnabled = true;
 
 void ImguiHandler::ImguiVulkanResultLogger(VkResult err)
 {
@@ -72,7 +75,15 @@ void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer)
     DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "IMGUI");
 
     // --- Your ImGui UI code here ---
-    ImGui::ShowDemoWindow();  // useful for testing
+    //ImGui::ShowDemoWindow();  // useful for testing
+
+    if (ImGui::Begin("GFX options", &isOpen, 0))
+    {
+        ImGui::Checkbox("Enable Blur", &isBlurEnabled);
+    }
+
+    ImGui::End();
+
     // --- Record to command buffer ---
     ImGui::Render();
     ImDrawData* draw_data = ImGui::GetDrawData();
