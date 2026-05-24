@@ -2252,6 +2252,8 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     }
 
     //Shadowmap renderpass
+    DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "SHADOW MAP");
+
     VkRenderPassBeginInfo shadowMapRenderPassBeginInfo{};
     shadowMapRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     shadowMapRenderPassBeginInfo.renderPass = shadowMapRenderPass;
@@ -2299,7 +2301,10 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdEndRenderPass(commandBuffer);
 
+    DebugUtils::getInstance().EndDebugLabel(commandBuffer);
+
     //Color lighting renderpass
+    DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "OPAQUE PASS");
 
     VkRenderPassBeginInfo renderPassBeginInfo{};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2350,13 +2355,11 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdEndRenderPass(commandBuffer);
 
-    //TransitionImageLayout(resolveColorImage, swapChainImageFormat,
-    //    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, true,commandBuffer);
-        
-    //TransitionImageLayout(swapChainImages[(imageIndex + 1) % MAX_FRAMES_IN_FLIGHT], swapChainImageFormat,
-    //    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, true,commandBuffer);
+    DebugUtils::getInstance().EndDebugLabel(commandBuffer);
 
     //Compute Blur
+    DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "BLUR COMPUTE");
+
     //UpdateComputeDescriptorSets();
 
     TransitionImageLayout(blurImage, VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -2373,7 +2376,11 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     TransitionImageLayout(blurImage, VK_FORMAT_R16G16B16A16_SFLOAT,
         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, false,commandBuffer);
 
-    // Begin the render pass
+    DebugUtils::getInstance().EndDebugLabel(commandBuffer);
+
+    //Post process
+    DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "POST-PROCESS PASS");
+
     VkRenderPassBeginInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = postProcessRenderPass;
@@ -2407,6 +2414,8 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     // End the render pass
     vkCmdEndRenderPass(commandBuffer);
+
+    DebugUtils::getInstance().EndDebugLabel(commandBuffer);
 
     EndFrameLayoutTransitions(commandBuffer);
 
@@ -2581,8 +2590,12 @@ void HelloTriangleApp::DrawFrame()
 
 void HelloTriangleApp::EndFrameLayoutTransitions(VkCommandBuffer commandBuffer)
 {
+    DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "EndFrameLayoutTransitions");
+
     TransitionImageLayout(resolveColorImage, swapChainImageFormat,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, false, commandBuffer);
+
+    DebugUtils::getInstance().EndDebugLabel(commandBuffer);
 }
 
 void HelloTriangleApp::EndFrame()

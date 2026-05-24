@@ -28,6 +28,10 @@ public:
 	void SetVulkanObjectName(VkDescriptorPool descriptorPool, const char* Name);
 	void SetVulkanObjectName(VkFramebuffer frameBuffer, const char* Name);
 	void SetVulkanObjectName(VkRenderPass renderpass, const char* Name);
+	
+	void BeginDebugLabel(const VkCommandBuffer& cmdBuf, const char* name );
+	void BeginDebugLabel(const VkCommandBuffer& cmdBuf, const char* name, float color[4]);
+	void EndDebugLabel(const VkCommandBuffer& cmdBuf);
 
 private:
 	void DebugMarkerSetObjectName(uint64_t object, VkDebugReportObjectTypeEXT oType, const char* Name);
@@ -35,6 +39,9 @@ private:
 
 	PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT;
 	PFN_vkDebugMarkerSetObjectNameEXT vkDebugMarkerSetObjectNameEXT;
+	
+	PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT;
+	PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT;
 
 private:
     DebugUtils() {} // Private constructor to prevent direct instantiation

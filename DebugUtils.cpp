@@ -29,6 +29,28 @@ void DebugUtils::Init()
         std::cerr << GREEN_TEXT << "vkSetDebugUtilsObjectNameEXT created\n" << std::endl;
     }
 
+    vkCmdBeginDebugUtilsLabelEXT =
+        (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(gfxCtx->logicalDevice, "vkCmdBeginDebugUtilsLabelEXT");
+    if (vkCmdBeginDebugUtilsLabelEXT == nullptr)
+    {
+        std::cerr << YELLOW_TEXT << "failed creating vkCmdBeginDebugUtilsLabelEXT\n" << std::endl;
+    }
+    else
+    {
+        std::cerr << GREEN_TEXT << "vkCmdBeginDebugUtilsLabelEXT created\n" << std::endl;
+    }
+
+    vkCmdEndDebugUtilsLabelEXT =
+        (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(gfxCtx->logicalDevice, "vkCmdEndDebugUtilsLabelEXT");
+    if (vkCmdEndDebugUtilsLabelEXT == nullptr)
+    {
+        std::cerr << YELLOW_TEXT << "failed creating vkCmdEndDebugUtilsLabelEXT\n" << std::endl;
+    }
+    else
+    {
+        std::cerr << GREEN_TEXT << "vkCmdEndDebugUtilsLabelEXT created\n" << std::endl;
+    }
+
     std::cerr << RESET_TEXT << std::endl;
 }
 
@@ -198,6 +220,33 @@ void DebugUtils::SetVulkanObjectName(VkRenderPass renderpass, const char* Name)
     {
         DebugUtilsSetObjectName((uint64_t)renderpass, VK_OBJECT_TYPE_RENDER_PASS, Name);
     }
+}
+
+void DebugUtils::BeginDebugLabel(const VkCommandBuffer& cmdBuf, const char* name)
+{
+    VkDebugUtilsLabelEXT debugLabelInfo;
+    debugLabelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    debugLabelInfo.pLabelName = name;
+    debugLabelInfo.pNext = nullptr;
+    vkCmdBeginDebugUtilsLabelEXT(cmdBuf, &debugLabelInfo);
+}
+
+void DebugUtils::BeginDebugLabel(const VkCommandBuffer& cmdBuf, const char* name, float color[4])
+{
+    VkDebugUtilsLabelEXT debugLabelInfo;
+    debugLabelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    debugLabelInfo.pLabelName = name;
+    debugLabelInfo.color[0] = color[0];
+    debugLabelInfo.color[1] = color[1];
+    debugLabelInfo.color[2] = color[2];
+    debugLabelInfo.color[3] = color[3];
+    debugLabelInfo.pNext = nullptr;
+    vkCmdBeginDebugUtilsLabelEXT(cmdBuf, &debugLabelInfo);
+}
+
+void DebugUtils::EndDebugLabel(const VkCommandBuffer& cmdBuf)
+{
+    vkCmdEndDebugUtilsLabelEXT(cmdBuf);
 }
 
 void DebugUtils::DebugMarkerSetObjectName(uint64_t object, VkDebugReportObjectTypeEXT oType, const char* Name)

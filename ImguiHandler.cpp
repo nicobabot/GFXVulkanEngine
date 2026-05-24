@@ -69,12 +69,16 @@ void ImguiHandler::NewFrame()
 
 void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer)
 {
+    DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "IMGUI");
+
     // --- Your ImGui UI code here ---
     ImGui::ShowDemoWindow();  // useful for testing
     // --- Record to command buffer ---
     ImGui::Render();
     ImDrawData* draw_data = ImGui::GetDrawData();
     ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
+
+    DebugUtils::getInstance().EndDebugLabel(commandBuffer);
 }
 
 void ImguiHandler::Cleanup()
