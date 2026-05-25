@@ -21,3 +21,9 @@ class GfxPlane : public GfxObject
 public:
 	GfxPlane(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout);
 };
+
+class GfxModel : public GfxObject
+{
+public:
+	GfxModel(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* loadModelPath);
+};

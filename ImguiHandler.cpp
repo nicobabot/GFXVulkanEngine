@@ -5,8 +5,8 @@
 ImguiVulkanObjects ImguiHandler::vkObjects{};
 VkDescriptorPool ImguiHandler::imguiDescriptorPool = VK_NULL_HANDLE;
 bool ImguiHandler::isOpen = true;
-bool ImguiHandler::lastBlurSetting = true;
-bool ImguiHandler::isBlurEnabled = true;
+bool ImguiHandler::lastBlurSetting = false;
+bool ImguiHandler::isBlurEnabled = false;
 
 void ImguiHandler::ImguiVulkanResultLogger(VkResult err)
 {
