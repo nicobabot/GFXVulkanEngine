@@ -33,6 +33,7 @@ Texture2D<float> depthShadowTexture : register(t3);
 #include "brdf.hlsl"
 #define SAMPLE_TEXTURE 0
 #define SIMPLE_COLOR 0
+#define SHOW_NORMALS 0
 #define SHADOW_MAP 1
 #define SHADOWMAP_DRAW_IN_GEOMETRY 0
 #define USE_PCF_SHADOWS 1
@@ -136,7 +137,7 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
     float3 sBRDF = (D * G)* F  ;
     sBRDF *= specularStrength;
 
-    float3 dBRDF = diffuseColor * Fd_Lambert();
+    float3 dBRDF = diffuseColor.rgb * Fd_Lambert();
 
     return float4((dBRDF + sBRDF) * NoL, 1.0f);
 }
@@ -192,6 +193,12 @@ float4 PSMain(PSInput input) : SV_TARGET
 {
     float3 lightDir = float3(-0.32, -0.77, 0.56);
     float4 brdfColor = float4(0,0,0,1);
+
+#if SHOW_NORMALS
+    float3 n = normalize(input.normal);
+    return float4(n, 1);
+#endif // #if SHOW_NORMALS
+
 #if SIMPLE_COLOR
     brdfColor= input.fragColor;
 #else // #if SIMPLE_COLOR

@@ -10,6 +10,8 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
+CompiledShaders/
+Shaders/PreprocessedShaders/
 
 # Visual Studio 2015 cache/options directory
 .vs/

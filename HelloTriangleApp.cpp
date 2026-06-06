@@ -1635,10 +1635,10 @@ void HelloTriangleApp::CreateTextureSampler()
 
 void HelloTriangleApp::PopulateObjects()
 {
-    //objects.push_back(new GfxCube(graphicsPipeline, graphicsPipelineLayout));
-    //objects.push_back(new GfxSphere(graphicsPipeline, graphicsPipelineLayout));
-    //objects.push_back(new GfxPlane(graphicsPipeline, graphicsPipelineLayout));
-    objects.push_back(new GfxModel(graphicsPipeline, graphicsPipelineLayout, MODEL_PATH.c_str()));
+    objects.push_back(new GfxCube(graphicsPipeline, graphicsPipelineLayout));
+    objects.push_back(new GfxSphere(graphicsPipeline, graphicsPipelineLayout));
+    objects.push_back(new GfxPlane(graphicsPipeline, graphicsPipelineLayout));
+    //objects.push_back(new GfxModel(graphicsPipeline, graphicsPipelineLayout, MODEL_PATH.c_str()));
 }
 
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
