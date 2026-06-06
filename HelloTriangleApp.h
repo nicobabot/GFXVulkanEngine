@@ -200,7 +200,6 @@ private:
 
     InputHandler inputHandler;
     GfxLoader gfxLoader;
-    std::vector<GfxObject*> objects;
 
 //Methods
 public:

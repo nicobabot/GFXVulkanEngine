@@ -151,8 +151,11 @@
   <ItemGroup>
     <ClCompile Include="BasicPolygons.cpp" />
     <ClCompile Include="DebugUtils.cpp" />
+    <ClCompile Include="Dvar.cpp" />
     <ClCompile Include="GfxContext.cpp" />
     <ClCompile Include="GfxObject.cpp" />
+    <ClCompile Include="GfxObjectManager.cpp" />
+    <ClCompile Include="GfxOptions.cpp" />
     <ClCompile Include="GfxPipelineManager.cpp" />
     <ClCompile Include="HelloTriangleApp.cpp" />
     <ClCompile Include="ImguiHandler.cpp" />
@@ -171,9 +174,12 @@
     <ClInclude Include="BasicPolygons.h" />
     <ClInclude Include="ColorsDef.h" />
     <ClInclude Include="DebugUtils.h" />
+    <ClInclude Include="Dvar.h" />
     <ClInclude Include="GfxContext.h" />
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="GfxObject.h" />
+    <ClInclude Include="GfxObjectManager.h" />
+    <ClInclude Include="GfxOptions.h" />
     <ClInclude Include="GfxPipelineManager.h" />
     <ClInclude Include="HelloTriangleApp.h" />
     <ClInclude Include="ImguiHandler.h" />

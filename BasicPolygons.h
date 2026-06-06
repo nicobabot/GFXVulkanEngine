@@ -7,19 +7,19 @@ public:
 
 	void GenerateSphereVertices_Internal(uint32_t numRings, uint32_t numSegments,
 		float radius, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices);
-	GfxSphere(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout);
+	GfxSphere(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* name);
 };
 
 class GfxCube : public GfxObject
 {
 public:
-	GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout);
+	GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* name);
 };
 
 class GfxPlane : public GfxObject
 {
 public:
-	GfxPlane(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout);
+	GfxPlane(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* name);
 };
 
 class GfxModel : public GfxObject

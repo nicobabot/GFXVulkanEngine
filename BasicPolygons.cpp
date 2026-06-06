@@ -48,8 +48,8 @@ void GfxSphere::GenerateSphereVertices_Internal(uint32_t numRings, uint32_t numS
 	}
 }
 
-GfxSphere::GfxSphere(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout) :
-	GfxObject(graphicsPipeline, graphicsPipelineLayout)
+GfxSphere::GfxSphere(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* name) :
+	GfxObject(graphicsPipeline, graphicsPipelineLayout,name)
 {
 	GenerateSphereVertices_Internal(20, 20, 1.0f, vertices, indices);
 
@@ -58,8 +58,8 @@ GfxSphere::GfxSphere(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipel
 }
 
 
-GfxCube::GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout)
-	: GfxObject(graphicsPipeline, graphicsPipelineLayout)
+GfxCube::GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* name)
+	: GfxObject(graphicsPipeline, graphicsPipelineLayout, name)
 {
 	vertices =
 	{
@@ -115,8 +115,8 @@ GfxCube::GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineL
 	CreateIndexBuffer();
 }
 
-GfxPlane::GfxPlane(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout)
-	: GfxObject(graphicsPipeline, graphicsPipelineLayout)
+GfxPlane::GfxPlane(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* name)
+	: GfxObject(graphicsPipeline, graphicsPipelineLayout,name)
 {
 	vertices =
 	{

@@ -32,10 +32,5 @@ class ImguiHandler
     static void Draw(const VkCommandBuffer& commandBuffer);
     static void Cleanup();
 
-    public:
-    static bool isOpen;
-    static bool lastBlurSetting;
-    static bool isBlurEnabled;
-
 };
 

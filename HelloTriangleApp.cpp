@@ -4,6 +4,8 @@
 #include "GfxContext.h"
 #include "BasicPolygons.h"
 #include "ImguiHandler.h"
+#include "GfxOptions.h"
+#include "GfxObjectManager.h"
 
 
 void HelloTriangleApp::Run()
@@ -1635,10 +1637,10 @@ void HelloTriangleApp::CreateTextureSampler()
 
 void HelloTriangleApp::PopulateObjects()
 {
-    objects.push_back(new GfxCube(graphicsPipeline, graphicsPipelineLayout));
-    objects.push_back(new GfxSphere(graphicsPipeline, graphicsPipelineLayout));
-    objects.push_back(new GfxPlane(graphicsPipeline, graphicsPipelineLayout));
-    //objects.push_back(new GfxModel(graphicsPipeline, graphicsPipelineLayout, MODEL_PATH.c_str()));
+    GfxObjectManager::get().objects.push_back(new GfxCube(graphicsPipeline, graphicsPipelineLayout, "cube"));
+    GfxObjectManager::get().objects.push_back(new GfxSphere(graphicsPipeline, graphicsPipelineLayout, "sphere"));
+    GfxObjectManager::get().objects.push_back(new GfxPlane(graphicsPipeline, graphicsPipelineLayout, "plane"));
+    //GfxObjectManager::get().objects.push_back(new GfxModel(graphicsPipeline, graphicsPipelineLayout, MODEL_PATH.c_str()));
 }
 
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
@@ -1992,7 +1994,7 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
         writeDescriptorSet[1].pImageInfo = &samplerInfo;
 
         VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageView = ImguiHandler::isBlurEnabled ? blurImageView : resolveColorImageView;
+        imageInfo.imageView = GfxOptions::get().blurEnabled ? blurImageView : resolveColorImageView;
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         imageInfo.sampler = nullptr;
 
@@ -2208,7 +2210,7 @@ void HelloTriangleApp::CreateSyncObjects()
 
 void HelloTriangleApp::SetDescriptorsToObjects()
 {
-    for(GfxObject* object : objects)
+    for(GfxObject* object : GfxObjectManager::get().objects)
     {
         object->SetDescriptorSetAndLayout(descriptorSets, descriptorSetLayout);
     }
@@ -2272,7 +2274,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
         shadowMapPipeline);
 
-    for (GfxObject* object : objects)
+    for (GfxObject* object : GfxObjectManager::get().objects)
     {
         VkViewport viewport{};
         viewport.x = 0.0f;
@@ -2323,7 +2325,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    for(GfxObject* object : objects)
+    for(GfxObject* object : GfxObjectManager::get().objects)
     {
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
             object->graphicsPipeline );
@@ -2358,7 +2360,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     DebugUtils::getInstance().EndDebugLabel(commandBuffer);
 
-    if(ImguiHandler::isBlurEnabled)
+    if(GfxOptions::get().blurEnabled)
     {
         //Compute Blur
         DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "BLUR COMPUTE");
@@ -2596,9 +2598,8 @@ void HelloTriangleApp::DrawFrame()
 
 void HelloTriangleApp::CheckRenderSettings()
 {
-    if (ImguiHandler::lastBlurSetting != ImguiHandler::isBlurEnabled)
+    if (GfxOptions::get().blurEnabled.IsModified())
     {
-        ImguiHandler::lastBlurSetting = ImguiHandler::isBlurEnabled;
         RecreateSwapChain();
     }
 }
@@ -2695,7 +2696,7 @@ void HelloTriangleApp::CleanupSwapChain()
 
 void HelloTriangleApp::CleanupBuffers()
 {
-    for(GfxObject* object : objects)
+    for(GfxObject* object : GfxObjectManager::get().objects)
     {
         vkDestroyBuffer(gfxCtx->logicalDevice, object->vertexBuffer, nullptr);
         vkFreeMemory(gfxCtx->logicalDevice, object->vertexBufferMemory, nullptr);

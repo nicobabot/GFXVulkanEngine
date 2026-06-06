@@ -1,12 +1,11 @@
 #include "ImguiHandler.h"
 #include <stdexcept>
 #include "HelloTriangleApp.h"
+#include "GfxOptions.h"
+#include "GfxObjectManager.h"
 
 ImguiVulkanObjects ImguiHandler::vkObjects{};
 VkDescriptorPool ImguiHandler::imguiDescriptorPool = VK_NULL_HANDLE;
-bool ImguiHandler::isOpen = true;
-bool ImguiHandler::lastBlurSetting = false;
-bool ImguiHandler::isBlurEnabled = false;
 
 void ImguiHandler::ImguiVulkanResultLogger(VkResult err)
 {
@@ -77,9 +76,22 @@ void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer)
     // --- Your ImGui UI code here ---
     //ImGui::ShowDemoWindow();  // useful for testing
 
-    if (ImGui::Begin("GFX options", &isOpen, 0))
+    bool hierarcyIsOpen = true;
+    if (ImGui::Begin("Object Hierarchy", &hierarcyIsOpen, 0))
     {
-        ImGui::Checkbox("Enable Blur", &isBlurEnabled);
+        GfxObjectManager::get().DrawImgui();
+    }
+    
+    ImGui::End();
+
+
+    if (ImGui::Begin("GFX options", &GfxOptions::get().isOpen, 0))
+    {
+        bool tempBlurEnabled = GfxOptions::get().blurEnabled;
+        if (ImGui::Checkbox("Enable Blur", &tempBlurEnabled))
+        {
+            GfxOptions::get().blurEnabled = tempBlurEnabled;
+        }
     }
 
     ImGui::End();
