@@ -6,7 +6,8 @@
 
 void InputHandler::Init()
 {
-	position = glm::vec3(0.0f, 2.0f, 5.0f);
+	//position = glm::vec3(0.0f, 2.0f, 5.0f);
+	position = glm::vec3(80, 110, -80);
 	up = glm::vec3(0.0f, 1.0f, 0.0f);
 	UpdateCameraVectors();
 }
@@ -27,6 +28,18 @@ void InputHandler::UpdateCameraVectors()
 
 void InputHandler::ReactToEvents(GLFWwindow &window)
 {
+	
+	/*bool ctrl = glfwGetKey(&window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
+		glfwGetKey(&window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
+
+	if (ctrl && glfwGetKey(&window, GLFW_KEY_C) == GLFW_PRESS) {
+		return;
+	}
+	if (ctrl && glfwGetKey(&window, GLFW_KEY_V) == GLFW_PRESS) {
+		return;
+	}*/
+
+
 	// Handle WASD movement
 	if (glfwGetKey(&window, GLFW_KEY_W) == GLFW_PRESS)
 	{
@@ -43,14 +56,6 @@ void InputHandler::ReactToEvents(GLFWwindow &window)
 	if (glfwGetKey(&window, GLFW_KEY_D) == GLFW_PRESS)
 	{
 		position += speed * right;
-	}
-	if (glfwGetKey(&window, GLFW_KEY_SPACE) == GLFW_PRESS)
-	{
-		position += speed * up;
-	}
-	if (glfwGetKey(&window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-	{
-		position -= speed * up;
 	}
 
 	// Handle mouse input for camera look

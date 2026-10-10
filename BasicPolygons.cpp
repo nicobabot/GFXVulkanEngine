@@ -53,6 +53,9 @@ GfxSphere::GfxSphere(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipel
 {
 	GenerateSphereVertices_Internal(20, 20, 1.0f, vertices, indices);
 
+	transform.position = glm::vec3(0, 15, 0);
+	transform.scale = glm::vec3(15, 15, 15);
+
 	CreateVertexBuffer();
 	CreateIndexBuffer();
 }
@@ -94,12 +97,6 @@ GfxCube::GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineL
 		{{0.5,-0.5,0.5},	RED, {0.0f, 1.0f} , {0.0,0.0,1.0}},
 	};
 
-	glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-2, 0, 0));
-
-	for (int i = 0; i<vertices.size(); ++i) 
-	{
-		vertices[i].position = translationMatrix * glm::vec4(vertices[i].position,1);
-	}
 
 	indices =
 	{
@@ -111,6 +108,9 @@ GfxCube::GfxCube(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineL
 		20,21,22,22,23,20,
 	};
 
+	transform.position = glm::vec3(-35, 15, 0);
+	transform.scale = glm::vec3(15, 15, 15);
+
 	CreateVertexBuffer();
 	CreateIndexBuffer();
 }
@@ -120,27 +120,19 @@ GfxPlane::GfxPlane(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelin
 {
 	vertices =
 	{
-		{{0.5,0.5,-0.5},	WHITE, {1.0f, 1.0f} , {0.0,1.0,0.0}},
-		{{-0.5,0.5,-0.5},	WHITE, {1.0f, 0.0f} , {0.0,1.0,0.0}},
-		{{-0.5,0.5,0.5},	WHITE, {0.0f, 0.0f} , {0.0,1.0,0.0}},
-		{{0.5,0.5,0.5},		WHITE, {0.0f, 1.0f} , {0.0,1.0,0.0}},
+		{{ 0.5f, 0.0f, -0.5f}, WHITE, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+		{{-0.5f, 0.0f, -0.5f}, WHITE, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+		{{-0.5f, 0.0f,  0.5f}, WHITE, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+		{{ 0.5f, 0.0f,  0.5f}, WHITE, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
 	};
-
-
-	glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0, -3, 0));
-	glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(25, 0, 25));
-
-	glm::mat4 transSacaleMat = translationMatrix * scaleMatrix;
-
-	for (int i = 0; i < vertices.size(); ++i)
-	{
-		vertices[i].position = transSacaleMat * glm::vec4(vertices[i].position, 1);
-	}
 
 	indices =
 	{
 		0,1,2,2,3,0,
 	};
+
+	transform.position = glm::vec3(0.0f, -50.0f, 0.0f);
+	transform.scale = glm::vec3(9999, 9999, 9999);
 
 	CreateVertexBuffer();
 	CreateIndexBuffer();
@@ -200,9 +192,9 @@ GfxModel::GfxModel(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelin
 	glm::mat4 Zrotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0, 0, 1));
 	glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(2, 2, 2));
 
-	glm::mat4 transform =glm::rotate( glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1, 0, 0)), glm::radians(-90.0f), glm::vec3(0, 0, 1));
+	glm::mat4 transformT =glm::rotate( glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1, 0, 0)), glm::radians(-90.0f), glm::vec3(0, 0, 1));
 
-	glm::mat3 normalTransform = glm::transpose(glm::inverse(glm::mat3(transform)));
+	glm::mat3 normalTransform = glm::transpose(glm::inverse(glm::mat3(transformT)));
 
 	for (int i = 0; i < vertices.size(); ++i)
 	{

@@ -10,6 +10,7 @@ struct GraphicsPipelineInfo
 	VkExtent2D viewportExtent;
 	VkSampleCountFlagBits msaaSamples;
 	VkRenderPass renderPass;
+	std::vector<VkPushConstantRange> pushConsts;
 
 	GraphicsPipelineInfo() = default;
 };

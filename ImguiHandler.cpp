@@ -76,13 +76,14 @@ void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer)
     // --- Your ImGui UI code here ---
     //ImGui::ShowDemoWindow();  // useful for testing
 
-    bool hierarcyIsOpen = true;
-    if (ImGui::Begin("Object Hierarchy", &hierarcyIsOpen, 0))
+  
+  //bool hierarcyIsOpen = true;
+   // if (ImGui::Begin("Object Hierarchy", &hierarcyIsOpen, 0))
     {
         GfxObjectManager::get().DrawImgui();
     }
     
-    ImGui::End();
+   // ImGui::End();
 
 
     if (ImGui::Begin("GFX options", &GfxOptions::get().isOpen, 0))

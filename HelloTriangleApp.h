@@ -16,7 +16,7 @@
 
 #include "ModelLoader.h"
 #include "DebugUtils.h"
-#include "GfxPipelineManager.h";
+#include "GfxPipelineManager.h"
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
     VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, const char* VkPipelineName, const char* VkPipelineLayoutName);
 

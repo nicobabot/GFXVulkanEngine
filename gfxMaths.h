@@ -155,11 +155,16 @@ const std::vector<uint32_t> basicGeometryIndices =
 
 struct UniformBufferObject 
 {
-	alignas(16) glm::mat4 modelM;
+	//alignas(16) glm::mat4 modelM;
 	alignas(16) glm::mat4 viewM;
 	alignas(16) glm::mat4 projM;
 	glm::vec3 viewPos;
 	alignas(4) int debugUtil;
 	float deltaTime;
 	alignas(16) glm::mat4 lightSpaceMatrix;
+};
+
+struct PushConstantData
+{
+	glm::mat4 modelM;
 };

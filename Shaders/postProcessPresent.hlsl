@@ -5,7 +5,6 @@ struct VSOutput {
 
 struct UniformBufferObject
 {
-    float4x4 modelM;
     float4x4 viewM;
     float4x4 projM;
     float3 viewPos;

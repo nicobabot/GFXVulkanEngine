@@ -298,6 +298,11 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
     rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizationStateCreateInfo.lineWidth = 1.0f;
     rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    /*rasterizationStateCreateInfo.depthBiasEnable = VK_TRUE;
+    rasterizationStateCreateInfo.depthBiasConstantFactor = 1.25f;
+    rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
+    rasterizationStateCreateInfo.depthBiasSlopeFactor = 1.75f;*/
+
     //Counter-Clockwise -> Y flip on projection matrix
     rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     //Useful for shadowmaps
@@ -359,8 +364,8 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutCreateInfo.setLayoutCount = 1;
     pipelineLayoutCreateInfo.pSetLayouts = &graphicPipelineInfo.descriptorSetLayout;
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = graphicPipelineInfo.pushConsts.size();
+    pipelineLayoutCreateInfo.pPushConstantRanges = graphicPipelineInfo.pushConsts.data();
 
     if (vkCreatePipelineLayout(gfxCtx->logicalDevice, &pipelineLayoutCreateInfo, nullptr, &graphicPipelineLayout) != VK_SUCCESS)
     {

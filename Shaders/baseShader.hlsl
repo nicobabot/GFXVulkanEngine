@@ -10,21 +10,45 @@ struct PSInput
     //int debugUtilF : POSITION2;
 };
 
+/*struct Light
+{
+    float3 position;
+    float  range;
+
+    float3 color;
+    float  intensity;
+
+    float3 direction;
+    float  type; // 0=directional, 1=point, 2=spot
+
+    float4 extra; // spot angles, flags, padding, etc.
+};*/
+
+//StructuredBuffer<Light> gLights : register(t0);
+
 struct UniformBufferObject
 {
-    float4x4 modelM;
     float4x4 viewM;
     float4x4 projM;
     float3 viewPos;
     int debugUtil;
     float deltaTime;
     float4x4 lightSpaceMatrix;
+    //uint    lightCount;
 };
 
 cbuffer MyConstantBuffer : register(b0)
 {
    UniformBufferObject ubo;
 };
+
+struct PushConstants
+{
+    float4x4 modelM;
+};
+
+[[vk::push_constant]]
+PushConstants pc;
 
 SamplerState mySampler : register(s1);
 Texture2D imageTexture : register(t2);
@@ -36,23 +60,31 @@ Texture2D<float> depthShadowTexture : register(t3);
 #define SHOW_NORMALS 0
 #define SHADOW_MAP 1
 #define SHADOWMAP_DRAW_IN_GEOMETRY 0
-#define USE_PCF_SHADOWS 1
+#define USE_PCF_SHADOWS 0
 
 PSInput VSMain(float4 inPosition : SV_POSITION, float3 inColor : COLOR, 
     float2 inTexCoord : TEXCOORD, float3 inNormal : NORMAL)
 {
     PSInput result;
+
+    float4 worldPos = mul(inPosition, pc.modelM);
+    float4 viewPos  = mul(worldPos, ubo.viewM);
+    float4 clipPos  = mul(viewPos, ubo.projM);
     
-    float4x4 MVP = (mul(mul(ubo.projM, ubo.viewM),ubo.modelM)); 
-    result.position = mul(MVP, inPosition);
+    //float4x4 MVP = (mul(mul(ubo.projM, ubo.viewM), pc.modelM)); 
+    //result.position = mul(MVP, inPosition);
+    result.position = clipPos;
     result.fragColor = float4(inColor,1.0f);
-    result.normal = normalize(inNormal);
-    result.fragPos = mul(ubo.modelM, inPosition);
+    //result.normal = normalize(inNormal);
+   /* float3x3 normalMatrix = (float3x3)pc.modelM;
+    result.normal = normalize(mul(inNormal, normalMatrix));*/
+    result.normal = normalize(mul(inNormal, pc.modelM));
+    result.fragPos = worldPos; //mul(pc.modelM, inPosition);
     //result.viewPosF = ubo.inViewPosF;
     //result.debugUtilF = ubo.debugUtil;
     result.fragTexCoord = float3(inTexCoord, 1.0f);
     result.viewPos = float4(ubo.viewPos,1.0f);
-    result.fragPosLightSpace = mul(ubo.lightSpaceMatrix, result.fragPos);
+    result.fragPosLightSpace = mul(worldPos, ubo.lightSpaceMatrix);
 
     return result;
 }

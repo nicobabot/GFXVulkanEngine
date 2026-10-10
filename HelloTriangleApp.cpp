@@ -6,6 +6,10 @@
 #include "ImguiHandler.h"
 #include "GfxOptions.h"
 #include "GfxObjectManager.h"
+#include "GfxObject.h"
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
+
 
 
 void HelloTriangleApp::Run()
@@ -1017,6 +1021,13 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
     std::vector<VkPipelineShaderStageCreateInfo>  shaderStages {vertexPipelineCreateInfo,
         fragmentPipelineCreateInfo};
+
+    std::vector<VkPushConstantRange> pushConsts;
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(PushConstantData);
+    pushConsts.push_back(pushConstantRange);
     
     GraphicsPipelineInfo graphicPipelineInfo{};
     graphicPipelineInfo.descriptorSetLayout = descriptorSetLayout;
@@ -1024,6 +1035,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     graphicPipelineInfo.renderPass = renderPass;
     graphicPipelineInfo.msaaSamples = msaaSamples;
     graphicPipelineInfo.viewportExtent = swapChainExtent;
+    graphicPipelineInfo.pushConsts = pushConsts;
 
     CreateGraphicsPipeline_Internal(graphicPipelineInfo, graphicsPipelineLayout, graphicsPipeline, "graphicsPipeline", "GraphicsPipelineLayout");
 
@@ -1057,6 +1069,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     shadowMapGraphicPipelineInfo.renderPass = shadowMapRenderPass;
     shadowMapGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     shadowMapGraphicPipelineInfo.viewportExtent = swapChainExtent;
+    shadowMapGraphicPipelineInfo.pushConsts = pushConsts;
 
     CreateGraphicsPipeline_Internal(shadowMapGraphicPipelineInfo, shadowMapPipelineLayout, shadowMapPipeline, "shadowMapPipeline", "shadowMapPipelineLayout");
 
@@ -1603,9 +1616,13 @@ void HelloTriangleApp::CreateTextureSampler()
     samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
     samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
-    samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    /*samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;*/
+
+    samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
     VkPhysicalDeviceFeatures dFeatures;
     vkGetPhysicalDeviceFeatures(gfxCtx->physicalDevice, &dFeatures);
@@ -2271,11 +2288,20 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdBeginRenderPass(commandBuffer, &shadowMapRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        shadowMapPipeline);
 
     for (GfxObject* object : GfxObjectManager::get().objects)
     {
+        DebugUtils::getInstance().BeginDebugLabel(commandBuffer, object->name);
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            shadowMapPipeline);
+
+        // Push the model matrix for this object
+        PushConstantData pc;
+        pc.modelM = glm::transpose(object->transform.GetModelMatrix());
+        vkCmdPushConstants(commandBuffer, shadowMapPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+            0, sizeof(PushConstantData), &pc);
+
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
@@ -2300,6 +2326,8 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
             shadowMapPipelineLayout, 0, 1, &shadowMapDescriptorSets[currentFrame], 0, nullptr);
 
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(object->indices.size()), 1, 0, 0, 0);
+
+        DebugUtils::getInstance().EndDebugLabel(commandBuffer);
     }
 
     vkCmdEndRenderPass(commandBuffer);
@@ -2327,8 +2355,15 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     for(GfxObject* object : GfxObjectManager::get().objects)
     {
+        DebugUtils::getInstance().BeginDebugLabel(commandBuffer, object->name);
+
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
             object->graphicsPipeline );
+
+        PushConstantData pc;
+        pc.modelM = glm::transpose(object->transform.GetModelMatrix());
+        vkCmdPushConstants(commandBuffer, object->graphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+            0, sizeof(PushConstantData), &pc);
 
         VkViewport viewport{};
         viewport.x = 0.0f;
@@ -2354,6 +2389,8 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
             object->graphicsPipelineLayout , 0, 1, &object->descriptorSet[currentFrame], 0, nullptr);
 
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(object->indices.size()), 1, 0, 0, 0);
+
+        DebugUtils::getInstance().EndDebugLabel(commandBuffer);
     }
 
     vkCmdEndRenderPass(commandBuffer);
@@ -2480,27 +2517,92 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
         std::chrono::seconds::period>(startTime - currentTime).count();
 
     UniformBufferObject ubo{};
-    ubo.modelM = glm::mat4(1.0f);
+    //ubo.modelM = glm::mat4(1.0f);
     glm::vec3 eyePos = inputHandler.GetPosition();
     glm::vec3 cameraFront = inputHandler.GetFront();
     
     ubo.viewPos = eyePos;
-    ubo.viewM = glm::lookAt(eyePos, eyePos + cameraFront, glm::vec3(0, 1, 0));
-    ubo.projM = glm::perspective(glm::radians(45.0f), 
+    ubo.viewM = glm::transpose(glm::lookAt(eyePos, eyePos + cameraFront, glm::vec3(0, 1, 0)));
+    ubo.projM = glm::perspective(glm::radians(45.0f),
         swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 500.0f);
     ubo.projM[1][1] *= -1;
+    ubo.projM = glm::transpose(ubo.projM);
     ubo.debugUtil = inputHandler.IsDebugEnabled() ? 1:0;
     ubo.deltaTime = time;
 
-    glm::vec3 lightDirection = glm::vec3(-0.32f, -0.77f, 0.56f);
-    glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
+    //glm::vec3 lightDirection = glm::vec3(-0.32f, -0.77f, 0.56f);
+    /*glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-    float left = -10.0f, right = 10.0f, bottom = -10.0f, top = 10.0f, near = -50.0f, far = 50.0f;
+    //float left = -10.0f, right = 10.0f, bottom = -10.0f, top = 10.0f, near = -50.0f, far = 50.0f;
+    float left = -20.0f;
+    float right = 20.0f;
+    float bottom = -20.0f;
+    float top = 20.0f;
+    float nearPlane = 1.0f;
+    float farPlane = 100.0f;
 
-    glm::mat4 lightView = glm::lookAt(glm::vec3(0.32, 0.77, -0.56), target, up);
-    glm::mat4 lightProjection = glm::ortho(left, right, bottom, top, near, far);
+    glm::vec3 lightDirection = glm::normalize(glm::vec3(-0.32f, -0.77f, 0.56f));
+    glm::vec3 sceneCenter = glm::vec3(0.0f, 0.0f, 0.0f);
+
+    glm::vec3 lightPos = sceneCenter - lightDirection * 30.0f;
+    glm::mat4 lightView = glm::lookAt(lightPos, sceneCenter, up);
+
+    glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 1.0f, 100.0f);
     lightProjection[1][1] *= -1;
-    ubo.lightSpaceMatrix =  lightProjection * lightView;
+
+    ubo.lightSpaceMatrix = glm::transpose(lightProjection * lightView);*/
+
+
+
+
+  /*  glm::vec3 lightDir = glm::normalize(glm::vec3(-0.32f, -0.77f, 0.56f));
+    glm::vec3 sceneCenter = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    float orthoSize = 20.0f;
+    float lightDistance = 30.0f;
+    float zNear = 1.0f;
+    float zFar = 100.0f;
+
+    glm::vec3 lightPos = sceneCenter - lightDir * lightDistance;
+
+    glm::mat4 lightView = glm::lookAt(lightPos, sceneCenter, up);
+    glm::mat4 lightProjection = glm::ortho(
+        -orthoSize, orthoSize,
+        -orthoSize, orthoSize,
+        zNear, zFar
+    );
+
+    lightProjection[1][1] *= -1.0f;
+    //ubo.lightSpaceMatrix = glm::transpose(lightProjection * lightView);
+    ubo.lightSpaceMatrix = lightProjection * lightView;*/
+    glm::vec3 sceneCenter = glm::vec3(8.75f, 40.0f, -27.75f); // center on scene
+    float     orthoSize    = 100.0f;
+    float     lightDistance = 30.0f;
+
+    glm::vec3 lightDir = glm::normalize(glm::vec3(-0.32f, -0.77f, 0.56f));
+    glm::vec3 lightPos = sceneCenter - lightDir * lightDistance;
+
+
+    // Choose up vector that isn't parallel to light direction
+    glm::vec3 up = (glm::abs(glm::dot(lightDir, glm::vec3(0, 1, 0))) > 0.9f)
+        ? glm::vec3(0, 0, 1)   // fall back to Z if light is near-vertical
+        : glm::vec3(0, 1, 0);
+
+    glm::mat4 lightView = glm::lookAt(lightPos, sceneCenter, up);
+    glm::mat4 lightProjection = glm::orthoRH_ZO(
+        -orthoSize, orthoSize,
+        -orthoSize, orthoSize,
+        0.1f, 500.0f
+    );
+
+    //std::cout << "lightView" << glm::to_string(lightView)<< "\n" << std::endl;
+    //std::cout << "lightProjection" << glm::to_string(lightProjection) << "\n" << std::endl;
+
+    //lightProjection[1][1] *= -1;
+    ubo.lightSpaceMatrix = glm::transpose(lightProjection * lightView);
+    //ubo.lightSpaceMatrix = glm::mat4(1.0f);
+
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
