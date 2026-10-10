@@ -11,6 +11,7 @@ struct GraphicsPipelineInfo
 	VkSampleCountFlagBits msaaSamples;
 	VkRenderPass renderPass;
 	std::vector<VkPushConstantRange> pushConsts;
+	bool useDepthBias = false;
 
 	GraphicsPipelineInfo() = default;
 };

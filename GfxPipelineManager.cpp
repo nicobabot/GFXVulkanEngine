@@ -298,10 +298,13 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
     rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizationStateCreateInfo.lineWidth = 1.0f;
     rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    /*rasterizationStateCreateInfo.depthBiasEnable = VK_TRUE;
-    rasterizationStateCreateInfo.depthBiasConstantFactor = 1.25f;
-    rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
-    rasterizationStateCreateInfo.depthBiasSlopeFactor = 1.75f;*/
+    if(graphicPipelineInfo.useDepthBias)
+    {    
+        rasterizationStateCreateInfo.depthBiasEnable = VK_TRUE;
+        rasterizationStateCreateInfo.depthBiasConstantFactor = 1.25f;
+        rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
+        rasterizationStateCreateInfo.depthBiasSlopeFactor = 1.75f;
+    }
 
     //Counter-Clockwise -> Y flip on projection matrix
     rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;

@@ -1070,6 +1070,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     shadowMapGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     shadowMapGraphicPipelineInfo.viewportExtent = swapChainExtent;
     shadowMapGraphicPipelineInfo.pushConsts = pushConsts;
+    shadowMapGraphicPipelineInfo.useDepthBias = true;
 
     CreateGraphicsPipeline_Internal(shadowMapGraphicPipelineInfo, shadowMapPipelineLayout, shadowMapPipeline, "shadowMapPipeline", "shadowMapPipelineLayout");
 
