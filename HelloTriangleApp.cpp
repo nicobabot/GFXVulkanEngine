@@ -3075,18 +3075,20 @@ void HelloTriangleApp::DrawFrame()
     vkWaitForFences(gfxCtx->logicalDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex = 0;
-    VkResult result = vkAcquireNextImageKHR(gfxCtx->logicalDevice, swapChain, UINT64_MAX,
+    VkResult acquireResult = vkAcquireNextImageKHR(gfxCtx->logicalDevice, swapChain, UINT64_MAX,
     imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) 
+
+    if (acquireResult != VK_SUCCESS && acquireResult != VK_ERROR_OUT_OF_DATE_KHR && acquireResult != VK_SUBOPTIMAL_KHR)
+    {
+        throw std::runtime_error("Error acquiring swapchain image!");
+    }
+    else if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR)
     {
         RecreateSwapChain();
         return;
     }
-    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) 
-    {
-        throw std::runtime_error("Error acquiring swapchain image!");
-    }
+    
 
     vkResetFences(gfxCtx->logicalDevice, 1, &inFlightFences[currentFrame]);
 
@@ -3145,17 +3147,16 @@ void HelloTriangleApp::DrawFrame()
     presentInfo.pImageIndices = &imageIndex;
     presentInfo.pResults = nullptr;
 
-    vkQueuePresentKHR(presentationQueue, &presentInfo);
-
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
+    VkResult presentResult = vkQueuePresentKHR(presentationQueue, &presentInfo);
+    if (presentResult != VK_SUCCESS && presentResult != VK_ERROR_OUT_OF_DATE_KHR && presentResult != VK_SUBOPTIMAL_KHR)
+    {
+        throw std::runtime_error("Error presenting swapchain image!");
+    }
+    else if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || framebufferResized || acquireResult == VK_SUBOPTIMAL_KHR)
     {
         framebufferResized = false;
         RecreateSwapChain();
         return;
-    }
-    else if (result != VK_SUCCESS)
-    {
-        throw std::runtime_error("Error presenting swapchain image!");
     }
 
     EndFrame();
