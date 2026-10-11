@@ -24,6 +24,10 @@ copy "D:\Documentos\C++Projects\AEngine\GFXVulkanEngine\CompiledShaders\postProc
 C:\VulkanSDK\1.3.204.0\Bin\dxc.exe -T cs_6_0 -E main -spirv -Fo CompiledShaders/cs_blur.spv -Zi -O3 Shaders/PreprocessedShaders/cs_blur_preprocessed.hlsl
 copy "D:\Documentos\C++Projects\AEngine\GFXVulkanEngine\CompiledShaders\cs_blur.spv" "D:\Documentos\C++Projects\AEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"
 
+"D:\Documentos\C++Projects\AEngine\DXC microsoft\bin\x64\dxc.exe" -P Shaders/vrsClassify.hlsl -Fi Shaders/PreprocessedShaders/vrsClassify_preprocessed.hlsl
+C:\VulkanSDK\1.3.204.0\Bin\dxc.exe -T cs_6_0 -E main -spirv -Fo CompiledShaders/vrsClassify.spv -Zi -O3 Shaders/PreprocessedShaders/vrsClassify_preprocessed.hlsl
+copy "D:\Documentos\C++Projects\AEngine\GFXVulkanEngine\CompiledShaders\vrsClassify.spv" "D:\Documentos\C++Projects\AEngine\GFXVulkanEngine\GFXVulkanEngine\x64\Debug\CompiledShaders\"
+
 ::C:\VulkanSDK\1.3.204.0\Bin\dxc.exe -P -Fi Shaders/PreprocessedShaders/decals_preprocessed.hlsl Shaders/decals.hlsl
 ::C:\VulkanSDK\1.3.204.0\Bin\dxc.exe -spirv -Zi -O3 Shaders/PreprocessedShaders/decals_preprocessed.hlsl -T vs_6_2 -E VSMain -Fo CompiledShaders/decalsVert.spv
 ::C:\VulkanSDK\1.3.204.0\Bin\dxc.exe -P -Fi Shaders/PreprocessedShaders/decals_preprocessed.hlsl Shaders/decals.hlsl 

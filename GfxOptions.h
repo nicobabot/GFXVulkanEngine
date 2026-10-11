@@ -17,4 +17,5 @@ private:
 public:
 	bool isOpen = true;
 	Dvar<bool> blurEnabled;
+	Dvar<bool> vrsDebugEnabled{ false };
 };

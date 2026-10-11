@@ -308,15 +308,10 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
 
     //Counter-Clockwise -> Y flip on projection matrix
     rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    //Useful for shadowmaps
-    rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
-    rasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
-    rasterizationStateCreateInfo.depthBiasClamp = 0.0f;
-    rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.0f;
 
     VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
     multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampleStateCreateInfo.sampleShadingEnable = VK_TRUE;
+    multisampleStateCreateInfo.sampleShadingEnable = graphicPipelineInfo.sampleShadingEnable ? VK_TRUE : VK_FALSE;
     multisampleStateCreateInfo.rasterizationSamples = graphicPipelineInfo.msaaSamples;
     multisampleStateCreateInfo.minSampleShading = .2f; //min fraction for sample shading;closer to one is smoother
     multisampleStateCreateInfo.pSampleMask = nullptr; // Optional
@@ -375,6 +370,16 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
         throw std::runtime_error("Error creating pipeline layuout!");
     }
 
+    VkPipelineFragmentShadingRateStateCreateInfoKHR shadingRateState{};
+    shadingRateState.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR;
+    shadingRateState.fragmentSize = { 1, 1 };
+
+    shadingRateState.combinerOps[0] =
+        VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+    shadingRateState.combinerOps[1] =
+        VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR;
+
     DebugUtils::getInstance().SetVulkanObjectName(graphicPipelineLayout, VkPipelineLayoutName);
 
     VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
@@ -398,6 +403,11 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
 
     graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
     graphicsPipelineCreateInfo.basePipelineIndex = -1;
+
+    if(graphicPipelineInfo.useFragmentShadingRate)
+    {
+        graphicsPipelineCreateInfo.pNext = &shadingRateState;
+    }
 
     if (vkCreateGraphicsPipelines(gfxCtx->logicalDevice, VK_NULL_HANDLE, 1,
         &graphicsPipelineCreateInfo, nullptr, &graphicPipeline) != VK_SUCCESS)

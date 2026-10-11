@@ -93,6 +93,13 @@ void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer)
         {
             GfxOptions::get().blurEnabled = tempBlurEnabled;
         }
+
+        bool tempVrsDebugEnabled = GfxOptions::get().vrsDebugEnabled;
+        if (ImGui::Checkbox("Show VRS rate mask", &tempVrsDebugEnabled))
+            GfxOptions::get().vrsDebugEnabled = tempVrsDebugEnabled;
+
+        ImGui::Text("VRS mask: red = 1x1, green = coarse requested");
+        ImGui::Text("Color-variance heuristic; mask is applied next frame");
     }
 
     ImGui::End();

@@ -118,6 +118,7 @@ private:
 
     VkPipelineLayout computePipelineLayout;
     VkPipeline computePipeline;
+    VkPipeline vrsClassifyPipeline = VK_NULL_HANDLE;
     std::vector<VkFramebuffer> shadowMapFramebuffers;
     std::vector<VkFramebuffer> swapchainFramebuffers;
     std::vector<VkFramebuffer> postProcessFramebuffers;
@@ -143,6 +144,23 @@ private:
     VkSampler textureSampler;
 
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    // Optional VK_KHR_fragment_shading_rate support. The attachment path is
+    // required by the planned compute-generated per-tile rate image.
+    bool fragmentShadingRateExtensionEnabled = false;
+    bool fragmentShadingRateAttachmentSupported = false;
+    bool pipelineFragmentShadingRateSupported = false;
+    bool fragmentShadingRateAttachmentFormatSupported = false;
+    bool fragmentShadingRateCoarseRateSupported = false;
+    VkExtent2D minFragmentShadingRateAttachmentTexelSize{};
+    VkExtent2D maxFragmentShadingRateAttachmentTexelSize{};
+    VkExtent2D fragmentShadingRateAttachmentTexelSize{ 16, 16 };
+    uint8_t fragmentShadingRateCoarseRateCode = 0;
+
+    VkImage fragmentShadingRateImage = VK_NULL_HANDLE;
+    VkDeviceMemory fragmentShadingRateImageMemory = VK_NULL_HANDLE;
+    VkImageView fragmentShadingRateImageView = VK_NULL_HANDLE;
+    bool vrsComputeClassificationSupported = false;
 
     VkImage colorImage;
     VkDeviceMemory colorImageMemory;
@@ -187,6 +205,7 @@ private:
     std::vector<VkDescriptorSet> shadowMapDescriptorSets;
     std::vector<VkDescriptorSet> descriptorSets;
     std::vector<VkDescriptorSet> computeDescriptorSets;
+    std::vector<VkDescriptorSet> vrsComputeDescriptorSets;
     std::vector<VkDescriptorSet> postProcessDescriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
@@ -221,6 +240,18 @@ private:
     const VkAllocationCallbacks* pAllocator);
     void CreateSurface();
     VkSampleCountFlagBits GetMaxUsableSampleCount();
+    void QueryAndLogFragmentShadingRateSupport(
+        VkPhysicalDevice device,
+        bool& extensionEnabled,
+        bool& attachmentSupported,
+        bool& pipelineSupported,
+        bool& attachmentFormatSupported,
+        bool& coarseRateSupported,
+        uint8_t& coarseRateCode,
+        VkExtent2D& minAttachmentTexelSize,
+        VkExtent2D& maxAttachmentTexelSize,
+        VkExtent2D& attachmentTexelSize,
+        VkSampleCountFlagBits rasterizationSamples);
     void PickPhysicalDevice();
     bool IsSuitableDevice(VkPhysicalDevice requestedPhysicalDevice);
     bool CheckDeviceExtensionSupport(VkPhysicalDevice requestedPhysicalDevice);
@@ -258,6 +289,7 @@ private:
     VkFormat FindSupportedFormat(std::vector<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
     VkFormat FindDepthFormat();
     void CreateColorResources();
+    void CreateFragmentShadingRateResources();
     void CreateDepthResources();
     void CreateShadowMapResources();
     void CreatePostProcessResources();

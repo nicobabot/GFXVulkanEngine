@@ -9,6 +9,7 @@
 #include "GfxObject.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <cstring>
 
 
 
@@ -72,6 +73,7 @@ void HelloTriangleApp::InitVulkan()
     CreateGraphicsPipeline();
     CreateCommandPool();
     CreateColorResources();
+    CreateFragmentShadingRateResources();
     CreateDepthResources();
     CreateShadowMapResources();
     CreatePostProcessResources();
@@ -348,6 +350,141 @@ VkSampleCountFlagBits HelloTriangleApp::GetMaxUsableSampleCount()
     return VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
 }
 
+static bool HasDeviceExtension(VkPhysicalDevice device, const char* extensionName)
+{
+    uint32_t extensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+    return std::any_of(availableExtensions.begin(), availableExtensions.end(),
+        [extensionName](const VkExtensionProperties& extension)
+        {
+            return std::strcmp(extension.extensionName, extensionName) == 0;
+        });
+}
+
+void HelloTriangleApp::QueryAndLogFragmentShadingRateSupport(
+    VkPhysicalDevice device,
+    bool& extensionEnabled,
+    bool& attachmentSupported,
+    bool& pipelineSupported,
+    bool& attachmentFormatSupported,
+    bool& coarseRateSupported,
+    uint8_t& coarseRateCode,
+    VkExtent2D& minAttachmentTexelSize,
+    VkExtent2D& maxAttachmentTexelSize,
+    VkExtent2D& attachmentTexelSize,
+    VkSampleCountFlagBits rasterizationSamples)
+{
+    extensionEnabled = false;
+    attachmentSupported = false;
+    pipelineSupported = false;
+    attachmentFormatSupported = false;
+    coarseRateSupported = false;
+    coarseRateCode = 0;
+
+    VkPhysicalDeviceProperties deviceProperties{};
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    std::cout << "Fragment shading rate on " << deviceProperties.deviceName << ": ";
+
+    if (!HasDeviceExtension(device, VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME))
+    {
+        std::cout << "VK_KHR_fragment_shading_rate unavailable; using 1x1 shading.\n";
+        return;
+    }
+
+    VkPhysicalDeviceFragmentShadingRateFeaturesKHR shadingRateFeatures{};
+    shadingRateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+    VkPhysicalDeviceFeatures2 features{};
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features.pNext = &shadingRateFeatures;
+    vkGetPhysicalDeviceFeatures2(device, &features);
+
+    VkPhysicalDeviceFragmentShadingRatePropertiesKHR shadingRateProperties{};
+    shadingRateProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
+    VkPhysicalDeviceProperties2 properties{};
+    properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    properties.pNext = &shadingRateProperties;
+    vkGetPhysicalDeviceProperties2(device, &properties);
+
+    VkFormatProperties rateFormatProperties{};
+    vkGetPhysicalDeviceFormatProperties(device, VK_FORMAT_R8_UINT, &rateFormatProperties);
+    attachmentFormatSupported = (rateFormatProperties.optimalTilingFeatures &
+        VK_FORMAT_FEATURE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR) != 0;
+    attachmentSupported = shadingRateFeatures.attachmentFragmentShadingRate == VK_TRUE && attachmentFormatSupported;
+    pipelineSupported = shadingRateFeatures.pipelineFragmentShadingRate == VK_TRUE;
+    extensionEnabled = attachmentSupported || pipelineSupported;
+    minAttachmentTexelSize = shadingRateProperties.minFragmentShadingRateAttachmentTexelSize;
+    maxAttachmentTexelSize = shadingRateProperties.maxFragmentShadingRateAttachmentTexelSize;
+    if (attachmentSupported)
+    {
+        attachmentTexelSize.width = std::clamp(16u, minAttachmentTexelSize.width, maxAttachmentTexelSize.width);
+        attachmentTexelSize.height = std::clamp(16u, minAttachmentTexelSize.height, maxAttachmentTexelSize.height);
+    }
+
+    std::cout << "attachment=" << (attachmentSupported ? "yes" : "no")
+        << ", pipeline=" << (pipelineSupported ? "yes" : "no")
+        << ", primitive=" << (shadingRateFeatures.primitiveFragmentShadingRate ? "yes" : "no")
+        << ", R8_UINT attachment format=" << (attachmentFormatSupported ? "yes" : "no")
+        << ", attachment tile range=" << minAttachmentTexelSize.width << "x" << minAttachmentTexelSize.height
+        << ".." << maxAttachmentTexelSize.width << "x" << maxAttachmentTexelSize.height << " pixels";
+
+    if (!extensionEnabled)
+    {
+        std::cout << "; no usable VRS mode, using 1x1 shading.\n";
+        return;
+    }
+
+    auto getFragmentShadingRates = reinterpret_cast<PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR>(
+        vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFragmentShadingRatesKHR"));
+    if (getFragmentShadingRates == nullptr)
+    {
+        extensionEnabled = false;
+        attachmentSupported = false;
+        pipelineSupported = false;
+        std::cout << "; failed to load extension query command, using 1x1 shading.\n";
+        return;
+    }
+
+    uint32_t rateCount = 0;
+    VkResult result = getFragmentShadingRates(device, &rateCount, nullptr);
+    if (result == VK_SUCCESS && rateCount > 0)
+    {
+        std::vector<VkPhysicalDeviceFragmentShadingRateKHR> rates(rateCount);
+        for (VkPhysicalDeviceFragmentShadingRateKHR& rate : rates)
+        {
+            rate.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR;
+        }
+        result = getFragmentShadingRates(device, &rateCount, rates.data());
+        if (result == VK_SUCCESS)
+        {
+            std::cout << ", supported fragment sizes=";
+            for (uint32_t i = 0; i < rateCount; ++i)
+            {
+                if (i != 0) std::cout << ", ";
+                std::cout << rates[i].fragmentSize.width << "x" << rates[i].fragmentSize.height;
+
+                const VkExtent2D size = rates[i].fragmentSize;
+                if (attachmentSupported && !coarseRateSupported &&
+                    (rates[i].sampleCounts & rasterizationSamples) != 0 &&
+                    size.width <= 4 && size.height <= 4 && (size.width > 1 || size.height > 1))
+                {
+                    auto log2Exact = [](uint32_t value) -> uint32_t
+                        {
+                            uint32_t exponent = 0;
+                            while (value > 1) { value >>= 1; ++exponent; }
+                            return exponent;
+                        };
+                    coarseRateCode = static_cast<uint8_t>((log2Exact(size.height) << 2) | log2Exact(size.width));
+                    coarseRateSupported = true;
+                }
+            }
+        }
+    }
+    std::cout << ".\n";
+}
+
 void HelloTriangleApp::PickPhysicalDevice()
 {
     uint32_t physicalDevicesCount = 0;
@@ -366,6 +503,22 @@ void HelloTriangleApp::PickPhysicalDevice()
         {
             gfxCtx->physicalDevice = pDevice;
             msaaSamples = GetMaxUsableSampleCount();
+            QueryAndLogFragmentShadingRateSupport(pDevice,
+                fragmentShadingRateExtensionEnabled,
+                fragmentShadingRateAttachmentSupported,
+                pipelineFragmentShadingRateSupported,
+                fragmentShadingRateAttachmentFormatSupported,
+                fragmentShadingRateCoarseRateSupported,
+                fragmentShadingRateCoarseRateCode,
+                minFragmentShadingRateAttachmentTexelSize,
+                maxFragmentShadingRateAttachmentTexelSize,
+                fragmentShadingRateAttachmentTexelSize,
+                msaaSamples);
+            VkFormatProperties rateFormatProperties{};
+            vkGetPhysicalDeviceFormatProperties(pDevice, VK_FORMAT_R8_UINT, &rateFormatProperties);
+            vrsComputeClassificationSupported = fragmentShadingRateAttachmentSupported &&
+                fragmentShadingRateCoarseRateSupported &&
+                (rateFormatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) != 0;
             break;
         }
     }
@@ -396,6 +549,7 @@ bool HelloTriangleApp::IsSuitableDevice(VkPhysicalDevice requestedPhysicalDevice
         dFeatures.geometryShader && FindQueueFamilies(requestedPhysicalDevice).IsComplete()
         && hasExtensionSupport && isAdequateSwapchain;
 }
+
 
 bool HelloTriangleApp::CheckDeviceExtensionSupport(VkPhysicalDevice requestedPhysicalDevice)
 {
@@ -520,9 +674,21 @@ void HelloTriangleApp::CreateLogicalDevice()
     physicalDeviceFeatures.sampleRateShading = VK_TRUE;
     physicalDeviceFeatures.shaderStorageImageReadWithoutFormat = VK_TRUE;
 
+    VkPhysicalDeviceFragmentShadingRateFeaturesKHR shadingRateFeatures{};
+    shadingRateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+    shadingRateFeatures.attachmentFragmentShadingRate = fragmentShadingRateAttachmentSupported ? VK_TRUE : VK_FALSE;
+    shadingRateFeatures.pipelineFragmentShadingRate = pipelineFragmentShadingRateSupported ? VK_TRUE : VK_FALSE;
+
+    std::vector<const char*> enabledDeviceExtensions = deviceExtensionsRequired;
+    if (fragmentShadingRateExtensionEnabled)
+    {
+        enabledDeviceExtensions.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+        logicalDeviceCreateInfo.pNext = &shadingRateFeatures;
+    }
+
     logicalDeviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
-    logicalDeviceCreateInfo.ppEnabledExtensionNames = deviceExtensionsRequired.data();
-    logicalDeviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensionsRequired.size());
+    logicalDeviceCreateInfo.ppEnabledExtensionNames = enabledDeviceExtensions.data();
+    logicalDeviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(enabledDeviceExtensions.size());
     
     if(enableValidationLayers)
     {
@@ -755,81 +921,104 @@ void HelloTriangleApp::CreateShadowMapRenderPass()
 
 void HelloTriangleApp::CreateColorRenderPass()
 {
-    VkAttachmentDescription colorAttachmentDescr{};
-    colorAttachmentDescr.format = swapChainImageFormat;
-    colorAttachmentDescr.samples = msaaSamples;
-    colorAttachmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; 
-    colorAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    //colorAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    std::array<VkAttachmentDescription2, 4> attachments{};
+    for (VkAttachmentDescription2& attachment : attachments)
+        attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
 
-    VkAttachmentReference colorAttachment{};
+    attachments[0].format = swapChainImageFormat;
+    attachments[0].samples = msaaSamples;
+    attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    attachments[1].format = FindDepthFormat();
+    attachments[1].samples = msaaSamples;
+    attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    attachments[2].format = swapChainImageFormat;
+    attachments[2].samples = VK_SAMPLE_COUNT_1_BIT;
+    attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[2].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    attachments[2].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkAttachmentReference2 colorAttachment{};
+    colorAttachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
     colorAttachment.attachment = 0;
     colorAttachment.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    //colorAttachment.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    VkAttachmentDescription depthAttachmentDescr{};
-    depthAttachmentDescr.format = FindDepthFormat();
-    depthAttachmentDescr.samples = msaaSamples;
-    depthAttachmentDescr.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachmentDescr.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachmentDescr.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depthAttachmentDescr.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachmentDescr.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttachmentDescr.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentReference depthAttachment{};
+    VkAttachmentReference2 depthAttachment{};
+    depthAttachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
     depthAttachment.attachment = 1;
     depthAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference2 resolveAttachment{};
+    resolveAttachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+    resolveAttachment.attachment = 2;
+    resolveAttachment.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentDescription colorAttachmentResolve{};
-    colorAttachmentResolve.format = swapChainImageFormat;
-    colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    //colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkAttachmentReference2 shadingRateAttachment{};
+    shadingRateAttachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+    shadingRateAttachment.attachment = 3;
+    shadingRateAttachment.layout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+    VkFragmentShadingRateAttachmentInfoKHR shadingRateAttachmentInfo{};
+    shadingRateAttachmentInfo.sType = VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
+    shadingRateAttachmentInfo.pFragmentShadingRateAttachment = &shadingRateAttachment;
+    shadingRateAttachmentInfo.shadingRateAttachmentTexelSize = fragmentShadingRateAttachmentTexelSize;
 
-    VkAttachmentReference colorResolveReference{};
-    colorResolveReference.attachment = 2;
-    colorResolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    //colorResolveReference.layout = VK_IMAGE_LAYOUT_GENERAL;
+    VkSubpassDescription2 subpass{};
+    subpass.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
+    subpass.pNext = fragmentShadingRateAttachmentSupported ? &shadingRateAttachmentInfo : nullptr;
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachment;
+    subpass.pDepthStencilAttachment = &depthAttachment;
+    subpass.pResolveAttachments = &resolveAttachment;
 
-    VkSubpassDescription subpassDescr{};
-    subpassDescr.colorAttachmentCount = 1;
-    subpassDescr.pColorAttachments = &colorAttachment;
-    subpassDescr.pDepthStencilAttachment = &depthAttachment;
-    subpassDescr.pResolveAttachments = &colorResolveReference;
-
-    VkSubpassDependency subpassDependency{};
-    subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    subpassDependency.dstSubpass = 0;
-    subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+    VkSubpassDependency2 dependency{};
+    dependency.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    subpassDependency.srcAccessMask = 0;
-    subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+    dependency.dstStageMask = dependency.srcStageMask;
+    dependency.srcAccessMask = 0;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    if (fragmentShadingRateAttachmentSupported)
+    {
+        dependency.dstStageMask |= VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+        dependency.dstAccessMask |= VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+        attachments[3].format = VK_FORMAT_R8_UINT;
+        attachments[3].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachments[3].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        attachments[3].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachments[3].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[3].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachments[3].initialLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        attachments[3].finalLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+    }
 
-    std::array<VkAttachmentDescription, 3> attachments = {colorAttachmentDescr, 
-        depthAttachmentDescr, colorAttachmentResolve };
-    VkRenderPassCreateInfo renderPassCreateInfo{};
-    renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    renderPassCreateInfo.pAttachments = attachments.data();
-    renderPassCreateInfo.subpassCount = 1;
-    renderPassCreateInfo.pSubpasses = &subpassDescr;
-    renderPassCreateInfo.dependencyCount = 1;
-    renderPassCreateInfo.pDependencies = &subpassDependency;
+    VkRenderPassCreateInfo2 createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
+    createInfo.attachmentCount = fragmentShadingRateAttachmentSupported ? 4u : 3u;
+    createInfo.pAttachments = attachments.data();
+    createInfo.subpassCount = 1;
+    createInfo.pSubpasses = &subpass;
+    createInfo.dependencyCount = 1;
+    createInfo.pDependencies = &dependency;
 
-    CreateRenderPass(renderPassCreateInfo, renderPass, "colorRenderPass");
+    if (vkCreateRenderPass2(gfxCtx->logicalDevice, &createInfo, nullptr, &renderPass) != VK_SUCCESS)
+        throw std::runtime_error("Error creating color renderpass!");
+    DebugUtils::getInstance().SetVulkanObjectName(renderPass, "colorRenderPass");
 }
 
 void HelloTriangleApp::CreatePostProcessRenderPass()
@@ -985,8 +1174,14 @@ void HelloTriangleApp::CreatePostProcessDescriptorSetLayout()
     sampledImageLayoutBinding.pImmutableSamplers = nullptr;
     sampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 3> bindings = { uboLayoutBinding,
-        samplerLayoutBinding, sampledImageLayoutBinding };
+    VkDescriptorSetLayoutBinding shadingRateImageBinding{};
+    shadingRateImageBinding.binding = 3;
+    shadingRateImageBinding.descriptorCount = 1;
+    shadingRateImageBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    shadingRateImageBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 4> bindings = { uboLayoutBinding,
+        samplerLayoutBinding, sampledImageLayoutBinding, shadingRateImageBinding };
     VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
     descriptorSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -1036,6 +1231,9 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     graphicPipelineInfo.msaaSamples = msaaSamples;
     graphicPipelineInfo.viewportExtent = swapChainExtent;
     graphicPipelineInfo.pushConsts = pushConsts;
+    // Vulkan reduces the effective shading rate to 1x1 when sample shading is enabled.
+    graphicPipelineInfo.sampleShadingEnable = !fragmentShadingRateAttachmentSupported;
+    graphicPipelineInfo.useFragmentShadingRate = fragmentShadingRateAttachmentSupported;
 
     CreateGraphicsPipeline_Internal(graphicPipelineInfo, graphicsPipelineLayout, graphicsPipeline, "graphicsPipeline", "GraphicsPipelineLayout");
 
@@ -1104,6 +1302,11 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     postProcessPresentGraphicPipelineInfo.renderPass = postProcessRenderPass;
     postProcessPresentGraphicPipelineInfo.msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     postProcessPresentGraphicPipelineInfo.viewportExtent = swapChainExtent;
+    VkPushConstantRange postProcessPushConstant{};
+    postProcessPushConstant.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    postProcessPushConstant.offset = 0;
+    postProcessPushConstant.size = sizeof(uint32_t);
+    postProcessPresentGraphicPipelineInfo.pushConsts.push_back(postProcessPushConstant);
 
     CreateGraphicsPipeline_Internal(postProcessPresentGraphicPipelineInfo, postProcessPipelineLayout, postProcessPipeline, "postProcessPipeline", "postProcessPipelineLayout");
 
@@ -1154,6 +1357,12 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     computePipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     computePipelineLayoutInfo.setLayoutCount = 1;
     computePipelineLayoutInfo.pSetLayouts = &computeDescriptorSetLayout;
+    VkPushConstantRange vrsRateCodeRange{};
+    vrsRateCodeRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    vrsRateCodeRange.offset = 0;
+    vrsRateCodeRange.size = sizeof(uint32_t) * 3;
+    computePipelineLayoutInfo.pushConstantRangeCount = 1;
+    computePipelineLayoutInfo.pPushConstantRanges = &vrsRateCodeRange;
 
     if (vkCreatePipelineLayout(gfxCtx->logicalDevice,
         &computePipelineLayoutInfo, nullptr, &computePipelineLayout) != VK_SUCCESS)
@@ -1173,6 +1382,25 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     }
 
     vkDestroyShaderModule(gfxCtx->logicalDevice, computeShaderModule, nullptr);
+
+    if (fragmentShadingRateAttachmentSupported && fragmentShadingRateCoarseRateSupported && vrsComputeClassificationSupported)
+    {
+        std::vector<char> classifyShader = ReadFile("CompiledShaders/vrsClassify.spv");
+        VkShaderModule classifyShaderModule = CreateShaderModule(classifyShader, "vrsClassifyShaderModule");
+        VkPipelineShaderStageCreateInfo classifyStage{};
+        classifyStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        classifyStage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+        classifyStage.module = classifyShaderModule;
+        classifyStage.pName = "main";
+        VkComputePipelineCreateInfo classifyPipelineInfo{};
+        classifyPipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        classifyPipelineInfo.layout = computePipelineLayout;
+        classifyPipelineInfo.stage = classifyStage;
+        if (vkCreateComputePipelines(gfxCtx->logicalDevice, VK_NULL_HANDLE, 1,
+            &classifyPipelineInfo, nullptr, &vrsClassifyPipeline) != VK_SUCCESS)
+            throw std::runtime_error("Error creating VRS classify compute pipeline!");
+        vkDestroyShaderModule(gfxCtx->logicalDevice, classifyShaderModule, nullptr);
+    }
 #endif//#if COMPUTE_FEATURE
 }
 
@@ -1205,12 +1433,9 @@ void HelloTriangleApp::CreateFramebuffers()
     swapchainFramebuffers.resize(swapChainImageViews.size());
     for (int i = 0; i < swapChainImageViews.size(); ++i) 
     {
-        std::array<VkImageView,3> attachments
-        {
-            colorImageView,
-            depthImageView,
-            resolveColorImageView,
-        };
+        std::vector<VkImageView> attachments{ colorImageView, depthImageView, resolveColorImageView };
+        if (fragmentShadingRateAttachmentSupported)
+            attachments.push_back(fragmentShadingRateImageView);
 
         VkFramebufferCreateInfo framebufferCreateInfo{};
         framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1336,6 +1561,107 @@ void HelloTriangleApp::CreateColorResources()
 
     TransitionImageLayout(blurImage, blurImageFormat,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1);
+}
+
+void HelloTriangleApp::CreateFragmentShadingRateResources()
+{
+    const uint32_t rateWidth = fragmentShadingRateAttachmentSupported
+        ? (swapChainExtent.width + fragmentShadingRateAttachmentTexelSize.width - 1) / fragmentShadingRateAttachmentTexelSize.width
+        : 1u;
+    const uint32_t rateHeight = fragmentShadingRateAttachmentSupported
+        ? (swapChainExtent.height + fragmentShadingRateAttachmentTexelSize.height - 1) / fragmentShadingRateAttachmentTexelSize.height
+        : 1u;
+    const VkDeviceSize imageSize = static_cast<VkDeviceSize>(rateWidth) * rateHeight;
+
+    VkFormatProperties rateFormatProperties{};
+    vkGetPhysicalDeviceFormatProperties(gfxCtx->physicalDevice, VK_FORMAT_R8_UINT, &rateFormatProperties);
+    vrsComputeClassificationSupported = fragmentShadingRateAttachmentSupported && fragmentShadingRateCoarseRateSupported &&
+        (rateFormatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) != 0;
+
+    VkImageUsageFlags rateImageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    if (fragmentShadingRateAttachmentSupported)
+        rateImageUsage |= VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+    if (vrsComputeClassificationSupported)
+        rateImageUsage |= VK_IMAGE_USAGE_STORAGE_BIT;
+    if (vrsComputeClassificationSupported)
+    {
+        VkImageFormatProperties imageProperties{};
+        if (vkGetPhysicalDeviceImageFormatProperties(gfxCtx->physicalDevice, VK_FORMAT_R8_UINT,
+            VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, rateImageUsage, 0, &imageProperties) != VK_SUCCESS)
+        {
+            vrsComputeClassificationSupported = false;
+            rateImageUsage &= ~VK_IMAGE_USAGE_STORAGE_BIT;
+        }
+    }
+    CreateImage(rateWidth, rateHeight, 1, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8_UINT,
+        VK_IMAGE_TILING_OPTIMAL,
+        rateImageUsage,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        fragmentShadingRateImage, fragmentShadingRateImageMemory, "fragmentShadingRateImage");
+    fragmentShadingRateImageView = CreateImageView(fragmentShadingRateImage, VK_FORMAT_R8_UINT,
+        VK_IMAGE_ASPECT_COLOR_BIT, 1, "fragmentShadingRateImageView");
+
+    std::vector<uint8_t> rateData(static_cast<size_t>(imageSize), 0); // 1x1 everywhere.
+    // Start conservatively at 1x1. The per-tile compute classifier updates this map after the first scene pass.
+
+    VkBuffer stagingBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
+    CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer, stagingMemory, "fragmentShadingRateStagingBuffer");
+    void* mappedData = nullptr;
+    if (vkMapMemory(gfxCtx->logicalDevice, stagingMemory, 0, imageSize, 0, &mappedData) != VK_SUCCESS)
+        throw std::runtime_error("Failed to map fragment shading rate staging buffer");
+    memcpy(mappedData, rateData.data(), static_cast<size_t>(imageSize));
+    vkUnmapMemory(gfxCtx->logicalDevice, stagingMemory);
+
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer();
+    VkImageMemoryBarrier toTransfer{};
+    toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    toTransfer.srcAccessMask = 0;
+    toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toTransfer.image = fragmentShadingRateImage;
+    toTransfer.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0, 0, nullptr, 0, nullptr, 1, &toTransfer);
+
+    VkBufferImageCopy copy{};
+    copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copy.imageSubresource.layerCount = 1;
+    copy.imageExtent = { rateWidth, rateHeight, 1 };
+    vkCmdCopyBufferToImage(commandBuffer, stagingBuffer, fragmentShadingRateImage,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+
+    VkImageMemoryBarrier toShadingRate{};
+    toShadingRate.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    toShadingRate.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toShadingRate.dstAccessMask = VK_ACCESS_SHADER_READ_BIT |
+        (fragmentShadingRateAttachmentSupported ? VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR : 0);
+    toShadingRate.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toShadingRate.newLayout = fragmentShadingRateAttachmentSupported
+        ? VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR
+        : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    toShadingRate.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toShadingRate.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toShadingRate.image = fragmentShadingRateImage;
+    toShadingRate.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    const VkPipelineStageFlags rateImageReadStage = fragmentShadingRateAttachmentSupported
+        ? VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR
+        : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, rateImageReadStage,
+        0, 0, nullptr, 0, nullptr, 1, &toShadingRate);
+    EndSingleTimeCommandBuffer(commandBuffer);
+
+    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(gfxCtx->logicalDevice, stagingMemory, nullptr);
+
+    std::cout << "VRS rate image: " << rateWidth << "x" << rateHeight << " texels, each covers "
+        << fragmentShadingRateAttachmentTexelSize.width << "x" << fragmentShadingRateAttachmentTexelSize.height
+        << " pixels; compute classification=" << (vrsComputeClassificationSupported ? "enabled" : "unavailable; conservative 1x1") << ".\n";
 }
 
 void HelloTriangleApp::CreateDepthResources()
@@ -1811,17 +2137,17 @@ void HelloTriangleApp::CreateColorPassDescriptorPool()
 #if COMPUTE_FEATURE
     std::array<VkDescriptorPoolSize, 3> computeDescriptorPoolSize;
     computeDescriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    computeDescriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    computeDescriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2);
     computeDescriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    computeDescriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    computeDescriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2);
     computeDescriptorPoolSize[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    computeDescriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    computeDescriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2);
 
     VkDescriptorPoolCreateInfo computeDescriptorPoolCreateInfo{};
     computeDescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     computeDescriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(computeDescriptorPoolSize.size());
     computeDescriptorPoolCreateInfo.pPoolSizes = computeDescriptorPoolSize.data();
-    computeDescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    computeDescriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2);
 
     CreateDescriptorPool(computeDescriptorPoolCreateInfo, computeDescriptorPool, "computeDescriptorPool");
 #endif//#if COMPUTE_FEATURE
@@ -1836,7 +2162,7 @@ void HelloTriangleApp::CreatePostProcessDescriptorPool()
     descriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
     descriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     descriptorPoolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    descriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    descriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 2);
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1903,6 +2229,11 @@ void HelloTriangleApp::CreateDescriptorSets()
 
     computeDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
     AllocateDescriptorSets(computeDescriptorSetAllocateInfo, computeDescriptorSets, "computeDescriptorSet");
+    if (vrsComputeClassificationSupported)
+    {
+        vrsComputeDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+        AllocateDescriptorSets(computeDescriptorSetAllocateInfo, vrsComputeDescriptorSets, "vrsComputeDescriptorSet");
+    }
 #endif//#if COMPUTE_FEATURE
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
@@ -1989,7 +2320,7 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
-        std::array<VkWriteDescriptorSet, 3> writeDescriptorSet{};
+        std::array<VkWriteDescriptorSet, 4> writeDescriptorSet{};
         writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSet[0].dstSet = postProcessDescriptorSets[i];
         writeDescriptorSet[0].dstBinding = 0;
@@ -2023,6 +2354,16 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
         writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         writeDescriptorSet[2].descriptorCount = 1;
         writeDescriptorSet[2].pImageInfo = &imageInfo;
+
+        VkDescriptorImageInfo rateImageInfo{};
+        rateImageInfo.imageView = fragmentShadingRateImageView;
+        rateImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        writeDescriptorSet[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[3].dstSet = postProcessDescriptorSets[i];
+        writeDescriptorSet[3].dstBinding = 3;
+        writeDescriptorSet[3].descriptorCount = 1;
+        writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writeDescriptorSet[3].pImageInfo = &rateImageInfo;
 
         vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
             writeDescriptorSet.data(), 0, nullptr);
@@ -2158,6 +2499,39 @@ void HelloTriangleApp::UpdateComputeDescriptorSets()
         vkUpdateDescriptorSets(gfxCtx->logicalDevice,
             computeWriteDescriptorSet.size(), computeWriteDescriptorSet.data(),
             0, nullptr);
+    }
+
+    for (int i = 0; i < vrsComputeDescriptorSets.size(); ++i)
+    {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.range = sizeof(UniformBufferObject);
+        VkDescriptorImageInfo inputImage{};
+        inputImage.imageView = resolveColorImageView;
+        inputImage.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkDescriptorImageInfo outputImage{};
+        outputImage.imageView = fragmentShadingRateImageView;
+        outputImage.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        std::array<VkWriteDescriptorSet, 3> writes{};
+        for (VkWriteDescriptorSet& write : writes)
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = vrsComputeDescriptorSets[i];
+        writes[0].dstBinding = 0;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[0].descriptorCount = 1;
+        writes[0].pBufferInfo = &bufferInfo;
+        writes[1].dstSet = vrsComputeDescriptorSets[i];
+        writes[1].dstBinding = 1;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writes[1].descriptorCount = 1;
+        writes[1].pImageInfo = &inputImage;
+        writes[2].dstSet = vrsComputeDescriptorSets[i];
+        writes[2].dstBinding = 2;
+        writes[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writes[2].descriptorCount = 1;
+        writes[2].pImageInfo = &outputImage;
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 }
 
@@ -2422,6 +2796,25 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
         DebugUtils::getInstance().EndDebugLabel(commandBuffer);
     }
 
+    const bool showVrsMask = static_cast<bool>(GfxOptions::get().vrsDebugEnabled);
+    if (fragmentShadingRateAttachmentSupported)
+    {
+        VkImageMemoryBarrier toShaderRead{};
+        toShaderRead.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toShaderRead.srcAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+        toShaderRead.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        toShaderRead.oldLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        toShaderRead.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        toShaderRead.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShaderRead.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShaderRead.image = fragmentShadingRateImage;
+        toShaderRead.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+        vkCmdPipelineBarrier(commandBuffer,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+            0, nullptr, 0, nullptr, 1, &toShaderRead);
+    }
+
     //Post process
     DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "POST-PROCESS PASS");
 
@@ -2452,12 +2845,81 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
         postProcessPipelineLayout, 0, 1, &postProcessDescriptorSets[currentFrame], 0, nullptr);
 
+    const uint32_t showVrsMaskValue = showVrsMask ? 1u : 0u;
+    vkCmdPushConstants(commandBuffer, postProcessPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+        0, sizeof(showVrsMaskValue), &showVrsMaskValue);
+
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(quadIndices.size()), 1, 0, 0, 0);
 
     ImguiHandler::Draw(commandBuffer);
 
     // End the render pass
     vkCmdEndRenderPass(commandBuffer);
+
+    if (vrsComputeClassificationSupported && vrsClassifyPipeline != VK_NULL_HANDLE)
+    {
+        // The mask displayed and used this frame is sampled above. Classify the just-rendered scene for the next frame.
+        VkImageMemoryBarrier rateToCompute{};
+        rateToCompute.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        rateToCompute.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        rateToCompute.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        rateToCompute.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        rateToCompute.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+        rateToCompute.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        rateToCompute.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        rateToCompute.image = fragmentShadingRateImage;
+        rateToCompute.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
+            0, nullptr, 0, nullptr, 1, &rateToCompute);
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, vrsClassifyPipeline);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+            computePipelineLayout, 0, 1, &vrsComputeDescriptorSets[currentFrame], 0, nullptr);
+        const std::array<uint32_t, 3> classifyConstants{
+            fragmentShadingRateCoarseRateCode,
+            fragmentShadingRateAttachmentTexelSize.width,
+            fragmentShadingRateAttachmentTexelSize.height };
+        vkCmdPushConstants(commandBuffer, computePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
+            0, sizeof(classifyConstants), classifyConstants.data());
+        const uint32_t rateWidth = (swapChainExtent.width + fragmentShadingRateAttachmentTexelSize.width - 1) /
+            fragmentShadingRateAttachmentTexelSize.width;
+        const uint32_t rateHeight = (swapChainExtent.height + fragmentShadingRateAttachmentTexelSize.height - 1) /
+            fragmentShadingRateAttachmentTexelSize.height;
+        vkCmdDispatch(commandBuffer, (rateWidth + 7) / 8, (rateHeight + 7) / 8, 1);
+
+        VkImageMemoryBarrier rateForNextFrame{};
+        rateForNextFrame.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        rateForNextFrame.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        rateForNextFrame.dstAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+        rateForNextFrame.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+        rateForNextFrame.newLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        rateForNextFrame.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        rateForNextFrame.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        rateForNextFrame.image = fragmentShadingRateImage;
+        rateForNextFrame.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, 0,
+            0, nullptr, 0, nullptr, 1, &rateForNextFrame);
+    }
+
+    if (fragmentShadingRateAttachmentSupported &&
+        !(vrsComputeClassificationSupported && vrsClassifyPipeline != VK_NULL_HANDLE))
+    {
+        VkImageMemoryBarrier toShadingRateRead{};
+        toShadingRateRead.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toShadingRateRead.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        toShadingRateRead.dstAccessMask = VK_ACCESS_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+        toShadingRateRead.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        toShadingRateRead.newLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+        toShadingRateRead.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShadingRateRead.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShadingRateRead.image = fragmentShadingRateImage;
+        toShadingRateRead.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, 0,
+            0, nullptr, 0, nullptr, 1, &toShadingRateRead);
+    }
 
     DebugUtils::getInstance().EndDebugLabel(commandBuffer);
 
@@ -2742,6 +3204,7 @@ void HelloTriangleApp::RecreateSwapChain()
     CreateSwapChainImageViews();
     CreateShadowMapResources();
     CreateColorResources();
+    CreateFragmentShadingRateResources();
     CreateDepthResources();
     CreatePostProcessResources();
     CreateShadowMapFramebuffers();
@@ -2789,6 +3252,15 @@ void HelloTriangleApp::CleanupSwapChain()
     for (VkFramebuffer framebuffer : postProcessFramebuffers)
     {
         vkDestroyFramebuffer(gfxCtx->logicalDevice, framebuffer, nullptr);
+    }
+    if (fragmentShadingRateImageView != VK_NULL_HANDLE)
+    {
+        vkDestroyImageView(gfxCtx->logicalDevice, fragmentShadingRateImageView, nullptr);
+        vkDestroyImage(gfxCtx->logicalDevice, fragmentShadingRateImage, nullptr);
+        vkFreeMemory(gfxCtx->logicalDevice, fragmentShadingRateImageMemory, nullptr);
+        fragmentShadingRateImageView = VK_NULL_HANDLE;
+        fragmentShadingRateImage = VK_NULL_HANDLE;
+        fragmentShadingRateImageMemory = VK_NULL_HANDLE;
     }
     for (VkImageView imageView : swapChainImageViews)
     {
@@ -2872,6 +3344,8 @@ void HelloTriangleApp::Cleanup()
     vkDestroyDescriptorPool(gfxCtx->logicalDevice, computeDescriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, computeDescriptorSetLayout, nullptr);
     vkDestroyPipeline(gfxCtx->logicalDevice, computePipeline, nullptr);
+    if (vrsClassifyPipeline != VK_NULL_HANDLE)
+        vkDestroyPipeline(gfxCtx->logicalDevice, vrsClassifyPipeline, nullptr);
     vkDestroyPipelineLayout(gfxCtx->logicalDevice, computePipelineLayout, nullptr);
 #endif//#if COMPUTE_FEATURE
 
