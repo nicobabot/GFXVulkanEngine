@@ -147,6 +147,8 @@ private:
 
     // Optional VK_KHR_fragment_shading_rate support. The attachment path is
     // required by the planned compute-generated per-tile rate image.
+    // True only after device creation has enabled presentation maintenance.
+    bool swapchainMaintenanceEnabled = false;
     bool fragmentShadingRateExtensionEnabled = false;
     bool fragmentShadingRateAttachmentSupported = false;
     bool pipelineFragmentShadingRateSupported = false;
@@ -311,6 +313,7 @@ private:
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void CreateCommandBuffers();
     void CreateSyncObjects();
+    void CreateRenderFinishedSyncObjects();
     void SetDescriptorsToObjects();
     void RecordComputeCommandBuffer(VkCommandBuffer commandBuffer);
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
@@ -324,6 +327,7 @@ private:
     void EndFrame();
     void RecreateSwapChain();
     void CleanupSwapChain();
+    void CleanupRenderFinishedSyncObjects();
     void CleanupBuffers();
     void Cleanup();
 };

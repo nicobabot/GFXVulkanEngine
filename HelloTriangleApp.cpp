@@ -143,6 +143,9 @@ void HelloTriangleApp::CreateInstance()
         requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         //requiredExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
     }
+    
+    requiredExtensions.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+    requiredExtensions.push_back(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
 
     if (logDebug == LogVerbosity::VERBOSE)
     {
@@ -171,7 +174,7 @@ void HelloTriangleApp::CreateInstance()
         instanceInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         instanceInfo.ppEnabledLayerNames = validationLayers.data();
         VkDebugUtilsMessengerCreateInfoEXT createInfoDebugMessenger{};
-        PopulateDebugMessengerCreateInfo(createInfoDebugMessenger);
+        PopulateDebugMessengerCreateInfo(createInfoDebugMessenger); 
         instanceInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &createInfoDebugMessenger;
         }
     else
@@ -674,16 +677,40 @@ void HelloTriangleApp::CreateLogicalDevice()
     physicalDeviceFeatures.sampleRateShading = VK_TRUE;
     physicalDeviceFeatures.shaderStorageImageReadWithoutFormat = VK_TRUE;
 
+    std::vector<const char*> enabledDeviceExtensions = deviceExtensionsRequired;
+
+    swapchainMaintenanceEnabled = false;
+    // Header declarations alone do not guarantee support on the selected GPU.
+    if (!HasDeviceExtension(gfxCtx->physicalDevice, VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME))
+    {
+        throw std::runtime_error("Selected GPU does not support VK_KHR_swapchain_maintenance1");
+    }
+
+    VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR swapchainMaintenance{};
+    swapchainMaintenance.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR;
+    VkPhysicalDeviceFeatures2 features{};
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features.pNext = &swapchainMaintenance;
+    vkGetPhysicalDeviceFeatures2(gfxCtx->physicalDevice, &features);
+    if (swapchainMaintenance.swapchainMaintenance1 != VK_TRUE)
+    {
+        throw std::runtime_error("Selected GPU does not support the swapchainMaintenance1 feature");
+    }
+    // Keep queried support separate from the features requested at device creation.
+    VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR enabledMaintenance{};
+    enabledMaintenance.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR;
+    enabledMaintenance.swapchainMaintenance1 = VK_TRUE;
+    enabledDeviceExtensions.push_back(VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+    logicalDeviceCreateInfo.pNext = &enabledMaintenance;
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR shadingRateFeatures{};
     shadingRateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
     shadingRateFeatures.attachmentFragmentShadingRate = fragmentShadingRateAttachmentSupported ? VK_TRUE : VK_FALSE;
     shadingRateFeatures.pipelineFragmentShadingRate = pipelineFragmentShadingRateSupported ? VK_TRUE : VK_FALSE;
-
-    std::vector<const char*> enabledDeviceExtensions = deviceExtensionsRequired;
     if (fragmentShadingRateExtensionEnabled)
     {
         enabledDeviceExtensions.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
-        logicalDeviceCreateInfo.pNext = &shadingRateFeatures;
+        // Extend the existing chain instead of replacing the maintenance node.
+        enabledMaintenance.pNext = &shadingRateFeatures;
     }
 
     logicalDeviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
@@ -704,6 +731,8 @@ void HelloTriangleApp::CreateLogicalDevice()
     {
         throw std::runtime_error("Error creating logical device");
     }
+    // Later presentation code must see enabled state, not merely supported state.
+    swapchainMaintenanceEnabled = true;
 }
 
 void HelloTriangleApp::GetLogicalDeviceQueues()
@@ -2580,7 +2609,6 @@ void HelloTriangleApp::CreateCommandBuffers()
 void HelloTriangleApp::CreateSyncObjects()
 {
     imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
     VkSemaphoreCreateInfo semaphoreCreateInfo{};
@@ -2591,9 +2619,24 @@ void HelloTriangleApp::CreateSyncObjects()
 
     for(int i =0; i<MAX_FRAMES_IN_FLIGHT;++i)
     {
-        if (vkCreateSemaphore(gfxCtx->logicalDevice, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(gfxCtx->logicalDevice, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-            vkCreateFence(gfxCtx->logicalDevice, &fenceCreateInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+        if (vkCreateSemaphore(gfxCtx->logicalDevice, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateFence(gfxCtx->logicalDevice, &fenceCreateInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Error creating sync objects!");
+        }
+    }
+
+    CreateRenderFinishedSyncObjects();
+}
+
+void HelloTriangleApp::CreateRenderFinishedSyncObjects()
+{
+    VkSemaphoreCreateInfo semaphoreCreateInfo{};
+    semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    renderFinishedSemaphores.resize(swapChainImages.size());
+    for (int i = 0; i < swapChainImages.size(); ++i)
+    {
+        if (vkCreateSemaphore(gfxCtx->logicalDevice, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("Error creating sync objects!");
         }
@@ -3120,7 +3163,7 @@ void HelloTriangleApp::DrawFrame()
 
     RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
-    VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame]};
+    VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[imageIndex]};
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.waitSemaphoreCount = 1;
@@ -3270,6 +3313,15 @@ void HelloTriangleApp::CleanupSwapChain()
     vkDestroySwapchainKHR(gfxCtx->logicalDevice, swapChain, nullptr);
 }
 
+void HelloTriangleApp::CleanupRenderFinishedSyncObjects()
+{
+    for (int i = 0; i < renderFinishedSemaphores.size(); ++i)
+    {
+        vkDestroySemaphore(gfxCtx->logicalDevice, renderFinishedSemaphores[i], nullptr);
+    }
+    renderFinishedSemaphores.clear();
+}
+
 void HelloTriangleApp::CleanupBuffers()
 {
     for(GfxObject* object : GfxObjectManager::get().objects)
@@ -3319,10 +3371,11 @@ void HelloTriangleApp::Cleanup()
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) 
     {
         vkDestroySemaphore(gfxCtx->logicalDevice, imageAvailableSemaphores[i], nullptr);
-        vkDestroySemaphore(gfxCtx->logicalDevice, renderFinishedSemaphores[i], nullptr);
         vkDestroyFence(gfxCtx->logicalDevice, inFlightFences[i], nullptr);
     }
     
+    CleanupRenderFinishedSyncObjects();
+
     vkDestroyCommandPool(gfxCtx->logicalDevice, gfxCtx->commandPool, nullptr);
     vkDestroyDescriptorPool(gfxCtx->logicalDevice, descriptorPool, nullptr);
     vkDestroyDescriptorPool(gfxCtx->logicalDevice, shadowMapDescriptorPool, nullptr);
