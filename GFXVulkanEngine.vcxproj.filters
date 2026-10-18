@@ -54,7 +54,7 @@
     <ClCompile Include="GfxGeometry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GfxGeometryManager.cpp">
+    <ClCompile Include="GfxGeometryLibrary.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BasicPolygons.cpp">
@@ -93,7 +93,7 @@
     <ClCompile Include="Dvar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GfxObjectManager.cpp">
+    <ClCompile Include="GfxScene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -104,7 +104,7 @@
     <ClInclude Include="GfxGeometry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GfxGeometryManager.h">
+    <ClInclude Include="GfxGeometryLibrary.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="gfxMaths.h">
@@ -176,7 +176,7 @@
     <ClInclude Include="Dvar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GfxObjectManager.h">
+    <ClInclude Include="GfxScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

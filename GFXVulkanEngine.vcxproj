@@ -154,9 +154,9 @@
     <ClCompile Include="Dvar.cpp" />
     <ClCompile Include="GfxContext.cpp" />
     <ClCompile Include="GfxGeometry.cpp" />
-    <ClCompile Include="GfxGeometryManager.cpp" />
+    <ClCompile Include="GfxGeometryLibrary.cpp" />
     <ClCompile Include="GfxObject.cpp" />
-    <ClCompile Include="GfxObjectManager.cpp" />
+    <ClCompile Include="GfxScene.cpp" />
     <ClCompile Include="GfxOptions.cpp" />
     <ClCompile Include="GfxPipelineManager.cpp" />
     <ClCompile Include="HelloTriangleApp.cpp" />
@@ -179,10 +179,10 @@
     <ClInclude Include="Dvar.h" />
     <ClInclude Include="GfxContext.h" />
     <ClInclude Include="GfxGeometry.h" />
-    <ClInclude Include="GfxGeometryManager.h" />
+    <ClInclude Include="GfxGeometryLibrary.h" />
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="GfxObject.h" />
-    <ClInclude Include="GfxObjectManager.h" />
+    <ClInclude Include="GfxScene.h" />
     <ClInclude Include="GfxOptions.h" />
     <ClInclude Include="GfxPipelineManager.h" />
     <ClInclude Include="HelloTriangleApp.h" />

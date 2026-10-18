@@ -3,6 +3,7 @@
 #include "Imgui/imgui_impl_vulkan.h"
 
 struct QueueFamilyIndices;
+class GfxScene;
 
 struct ImguiVulkanObjects
 {
@@ -29,7 +30,7 @@ class ImguiHandler
 	static void InitWindow(GLFWwindow* window);
 	static void InitVulkan(ImguiVulkanObjects vulkanObj);
     static void NewFrame();
-    static void Draw(const VkCommandBuffer& commandBuffer);
+    static void Draw(const VkCommandBuffer& commandBuffer, GfxScene& scene);
     static void Cleanup();
 
 };

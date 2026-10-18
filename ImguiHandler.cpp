@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include "HelloTriangleApp.h"
 #include "GfxOptions.h"
-#include "GfxObjectManager.h"
+#include "GfxScene.h"
 
 ImguiVulkanObjects ImguiHandler::vkObjects{};
 VkDescriptorPool ImguiHandler::imguiDescriptorPool = VK_NULL_HANDLE;
@@ -69,7 +69,7 @@ void ImguiHandler::NewFrame()
     ImGui::NewFrame();
 }
 
-void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer)
+void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer, GfxScene& scene)
 {
     DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "IMGUI");
 
@@ -80,7 +80,7 @@ void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer)
   //bool hierarcyIsOpen = true;
    // if (ImGui::Begin("Object Hierarchy", &hierarcyIsOpen, 0))
     {
-        GfxObjectManager::get().DrawImgui();
+        scene.DrawImgui();
     }
     
    // ImGui::End();

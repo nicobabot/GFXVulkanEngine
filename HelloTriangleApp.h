@@ -17,7 +17,8 @@
 #include "ModelLoader.h"
 #include "DebugUtils.h"
 #include "GfxPipelineManager.h"
-#include "GfxGeometryManager.h"
+#include "GfxGeometryLibrary.h"
+#include "GfxScene.h"
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
     VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, const char* VkPipelineName, const char* VkPipelineLayoutName);
 
@@ -84,8 +85,8 @@ class HelloTriangleApp
 {
 //Variables
 private:
-    // Owns geometry independently from the scene instances borrowing it.
-    GfxGeometryManager geometryManager;
+    GfxScene scene;
+    GfxGeometryLibrary geometryLibrary;
     GLFWwindow *window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;

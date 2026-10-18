@@ -5,7 +5,7 @@
 #include "GfxGeometry.h"
 #include "ImguiHandler.h"
 #include "GfxOptions.h"
-#include "GfxObjectManager.h"
+#include "GfxScene.h"
 #include "GfxObject.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -2010,22 +2010,19 @@ void HelloTriangleApp::CreateTextureSampler()
 
 void HelloTriangleApp::PopulateObjects()
 {
-    auto& objects = GfxObjectManager::get().objects;
     auto addObject = [&](const char* name, const GfxGeometry* geometry,
         const glm::vec3& position, const glm::vec3& scale)
     {
-        auto* object = new GfxObject(graphicsPipeline, graphicsPipelineLayout, name);
-        object->geometry = geometry;
-        object->transform.position = position;
-        object->transform.scale = scale;
-        objects.push_back(object);
+        GfxObject& object = scene.CreateObject(name, geometry, graphicsPipeline, graphicsPipelineLayout);
+        object.transform.position = position;
+        object.transform.scale = scale;
     };
 
-    addObject("cube", geometryManager.CreateCubeGeometry(), glm::vec3(-35, 15, 0), glm::vec3(15));
+    addObject("cube", geometryLibrary.GetOrCreateCube(), glm::vec3(-35, 15, 0), glm::vec3(15));
     // A repeated request returns the same geometry, without another GPU upload.
-    addObject("cube 2", geometryManager.CreateCubeGeometry(), glm::vec3(35, 15, 0), glm::vec3(15));
-    addObject("sphere", geometryManager.CreateSphereGeometry(), glm::vec3(0, 15, 0), glm::vec3(15));
-    addObject("plane", geometryManager.CreatePlaneGeometry(), glm::vec3(0, -50, 0), glm::vec3(9999));
+    addObject("cube 2", geometryLibrary.GetOrCreateCube(), glm::vec3(35, 15, 0), glm::vec3(15));
+    addObject("sphere", geometryLibrary.GetOrCreateSphere(), glm::vec3(0, 15, 0), glm::vec3(15));
+    addObject("plane", geometryLibrary.GetOrCreatePlane(), glm::vec3(0, -50, 0), glm::vec3(9999));
 }
 
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
@@ -2657,9 +2654,9 @@ void HelloTriangleApp::CreateRenderFinishedSyncObjects()
 
 void HelloTriangleApp::SetDescriptorsToObjects()
 {
-    for(GfxObject* object : GfxObjectManager::get().objects)
+    for (const auto& sceneObject : scene.GetObjects())
     {
-        object->SetDescriptorSetAndLayout(descriptorSets, descriptorSetLayout);
+        sceneObject->SetDescriptorSetAndLayout(descriptorSets, descriptorSetLayout);
     }
 }
 
@@ -2719,8 +2716,9 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     vkCmdBeginRenderPass(commandBuffer, &shadowMapRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 
-    for (GfxObject* object : GfxObjectManager::get().objects)
+    for (const auto& sceneObject : scene.GetObjects())
     {
+        const GfxObject* object = sceneObject.get();
         DebugUtils::getInstance().BeginDebugLabel(commandBuffer, object->name);
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -2783,8 +2781,9 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    for(GfxObject* object : GfxObjectManager::get().objects)
+    for (const auto& sceneObject : scene.GetObjects())
     {
+        const GfxObject* object = sceneObject.get();
         DebugUtils::getInstance().BeginDebugLabel(commandBuffer, object->name);
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
@@ -2906,7 +2905,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(quadIndices.size()), 1, 0, 0, 0);
 
-    ImguiHandler::Draw(commandBuffer);
+    ImguiHandler::Draw(commandBuffer, scene);
 
     // End the render pass
     vkCmdEndRenderPass(commandBuffer);
@@ -3336,14 +3335,9 @@ void HelloTriangleApp::CleanupRenderFinishedSyncObjects()
 
 void HelloTriangleApp::CleanupBuffers()
 {
-    // Cleanup() has waited for the GPU. Remove borrowers before releasing shared meshes.
-    GfxObjectManager::get().selectedObject = nullptr;
-    for(GfxObject* object : GfxObjectManager::get().objects)
-    {
-        delete object;
-    }
-    GfxObjectManager::get().objects.clear();
-    geometryManager.Cleanup();
+    // Cleanup() has waited for the GPU. Destroy borrowers before shared geometry.
+    scene.Clear();
+    geometryLibrary.Clear();
 
     for (int i = 0; i < shaderStorageBuffers.size(); i++)
     {
