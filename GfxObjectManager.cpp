@@ -1,6 +1,7 @@
 #include "GfxObjectManager.h"
 #include "Imgui/imgui.h"
 #include "GfxObject.h"
+#include "GfxGeometry.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -36,6 +37,19 @@ void GfxObjectManager::DrawImgui()
 		if (selectedObject != nullptr)
 		{
 			ImGui::Text("Selected Object: %s", selectedObject->name);
+			if (selectedObject->geometry != nullptr)
+			{
+				// Pointer identity makes sharing directly inspectable in the editor.
+				const GfxGeometry* geometry = selectedObject->geometry;
+				ImGui::Text("Geometry: %s", geometry->name.c_str());
+				ImGui::Text("Geometry address: %p", static_cast<const void*>(geometry));
+				ImGui::Text("Indices: %u", geometry->indexCount);
+				int instanceCount = 0;
+				for (const GfxObject* object : objects)
+					if (object->geometry == geometry)
+						++instanceCount;
+				ImGui::Text("Instances using geometry: %d", instanceCount);
+			}
 			ImGui::Separator();
 
 			// Position

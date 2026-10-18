@@ -2,7 +2,7 @@
 #include "MainDefines.h"
 #include "ComputeObjectsManager.h"
 #include "GfxContext.h"
-#include "BasicPolygons.h"
+#include "GfxGeometry.h"
 #include "ImguiHandler.h"
 #include "GfxOptions.h"
 #include "GfxObjectManager.h"
@@ -2010,10 +2010,22 @@ void HelloTriangleApp::CreateTextureSampler()
 
 void HelloTriangleApp::PopulateObjects()
 {
-    GfxObjectManager::get().objects.push_back(new GfxCube(graphicsPipeline, graphicsPipelineLayout, "cube"));
-    GfxObjectManager::get().objects.push_back(new GfxSphere(graphicsPipeline, graphicsPipelineLayout, "sphere"));
-    GfxObjectManager::get().objects.push_back(new GfxPlane(graphicsPipeline, graphicsPipelineLayout, "plane"));
-    //GfxObjectManager::get().objects.push_back(new GfxModel(graphicsPipeline, graphicsPipelineLayout, MODEL_PATH.c_str()));
+    auto& objects = GfxObjectManager::get().objects;
+    auto addObject = [&](const char* name, const GfxGeometry* geometry,
+        const glm::vec3& position, const glm::vec3& scale)
+    {
+        auto* object = new GfxObject(graphicsPipeline, graphicsPipelineLayout, name);
+        object->geometry = geometry;
+        object->transform.position = position;
+        object->transform.scale = scale;
+        objects.push_back(object);
+    };
+
+    addObject("cube", geometryManager.CreateCubeGeometry(), glm::vec3(-35, 15, 0), glm::vec3(15));
+    // A repeated request returns the same geometry, without another GPU upload.
+    addObject("cube 2", geometryManager.CreateCubeGeometry(), glm::vec3(35, 15, 0), glm::vec3(15));
+    addObject("sphere", geometryManager.CreateSphereGeometry(), glm::vec3(0, 15, 0), glm::vec3(15));
+    addObject("plane", geometryManager.CreatePlaneGeometry(), glm::vec3(0, -50, 0), glm::vec3(9999));
 }
 
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
@@ -2734,16 +2746,16 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
         scissor.offset = { 0, 0 };
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = { object->vertexBuffer };
+        VkBuffer vertexBuffers[] = { object->geometry->vertexBuffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdBindIndexBuffer(commandBuffer, object->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(commandBuffer, object->geometry->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
             shadowMapPipelineLayout, 0, 1, &shadowMapDescriptorSets[currentFrame], 0, nullptr);
 
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(object->indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, object->geometry->indexCount, 1, 0, 0, 0);
 
         DebugUtils::getInstance().EndDebugLabel(commandBuffer);
     }
@@ -2797,16 +2809,16 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
         scissor.offset = {0, 0};
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = { object->vertexBuffer};
+        VkBuffer vertexBuffers[] = { object->geometry->vertexBuffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdBindIndexBuffer(commandBuffer, object->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(commandBuffer, object->geometry->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
             object->graphicsPipelineLayout , 0, 1, &object->descriptorSet[currentFrame], 0, nullptr);
 
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(object->indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, object->geometry->indexCount, 1, 0, 0, 0);
 
         DebugUtils::getInstance().EndDebugLabel(commandBuffer);
     }
@@ -3324,13 +3336,14 @@ void HelloTriangleApp::CleanupRenderFinishedSyncObjects()
 
 void HelloTriangleApp::CleanupBuffers()
 {
+    // Cleanup() has waited for the GPU. Remove borrowers before releasing shared meshes.
+    GfxObjectManager::get().selectedObject = nullptr;
     for(GfxObject* object : GfxObjectManager::get().objects)
     {
-        vkDestroyBuffer(gfxCtx->logicalDevice, object->vertexBuffer, nullptr);
-        vkFreeMemory(gfxCtx->logicalDevice, object->vertexBufferMemory, nullptr);
-        vkDestroyBuffer(gfxCtx->logicalDevice, object->indexBuffer, nullptr);
-        vkFreeMemory(gfxCtx->logicalDevice, object->indexBufferMemory, nullptr);
+        delete object;
     }
+    GfxObjectManager::get().objects.clear();
+    geometryManager.Cleanup();
 
     for (int i = 0; i < shaderStorageBuffers.size(); i++)
     {

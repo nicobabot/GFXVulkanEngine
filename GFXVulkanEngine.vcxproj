@@ -153,6 +153,8 @@
     <ClCompile Include="DebugUtils.cpp" />
     <ClCompile Include="Dvar.cpp" />
     <ClCompile Include="GfxContext.cpp" />
+    <ClCompile Include="GfxGeometry.cpp" />
+    <ClCompile Include="GfxGeometryManager.cpp" />
     <ClCompile Include="GfxObject.cpp" />
     <ClCompile Include="GfxObjectManager.cpp" />
     <ClCompile Include="GfxOptions.cpp" />
@@ -176,6 +178,8 @@
     <ClInclude Include="DebugUtils.h" />
     <ClInclude Include="Dvar.h" />
     <ClInclude Include="GfxContext.h" />
+    <ClInclude Include="GfxGeometry.h" />
+    <ClInclude Include="GfxGeometryManager.h" />
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="GfxObject.h" />
     <ClInclude Include="GfxObjectManager.h" />

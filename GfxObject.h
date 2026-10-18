@@ -4,9 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
-
-
-class Vertex;
+class GfxGeometry;
 
 // Transform component for GfxObject positioning, rotation, and scaling
 struct GfxTransform
@@ -49,25 +47,16 @@ class GfxObject
 	// Transform component
 	GfxTransform transform;
 
-	//Rendering
-	std::vector<Vertex> vertices;
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory;
-
-	std::vector<uint32_t> indices;
-	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
+	// Non-owning reference. The application's geometry manager outlives scene objects.
+	const GfxGeometry* geometry = nullptr;
 
 	std::vector<VkDescriptorSet> descriptorSet;
-	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;
 
 	const char* name;
-
-	void CreateVertexBuffer();
-	void CreateIndexBuffer();
 
 };
 

@@ -51,6 +51,12 @@
     <ClCompile Include="GfxContext.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GfxGeometry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GfxGeometryManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="BasicPolygons.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -93,6 +99,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HelloTriangleApp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GfxGeometry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GfxGeometryManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="gfxMaths.h">
