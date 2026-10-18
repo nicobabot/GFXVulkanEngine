@@ -155,6 +155,9 @@
     <ClCompile Include="GfxContext.cpp" />
     <ClCompile Include="GfxGeometry.cpp" />
     <ClCompile Include="GfxGeometryLibrary.cpp" />
+    <ClCompile Include="GfxTexture.cpp" />
+    <ClCompile Include="GfxTextureLibrary.cpp" />
+    <ClCompile Include="GfxMaterialLibrary.cpp" />
     <ClCompile Include="GfxObject.cpp" />
     <ClCompile Include="GfxScene.cpp" />
     <ClCompile Include="GfxOptions.cpp" />
@@ -180,6 +183,10 @@
     <ClInclude Include="GfxContext.h" />
     <ClInclude Include="GfxGeometry.h" />
     <ClInclude Include="GfxGeometryLibrary.h" />
+    <ClInclude Include="GfxTexture.h" />
+    <ClInclude Include="GfxTextureLibrary.h" />
+    <ClInclude Include="GfxMaterial.h" />
+    <ClInclude Include="GfxMaterialLibrary.h" />
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="GfxObject.h" />
     <ClInclude Include="GfxScene.h" />

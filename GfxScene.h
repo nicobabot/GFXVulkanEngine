@@ -10,7 +10,7 @@ class GfxScene
 {
 public:
     GfxObject& CreateObject(const char* name, const GfxGeometry* geometry,
-        VkPipeline pipeline, VkPipelineLayout pipelineLayout);
+        const GfxMaterial* material, VkPipeline pipeline, VkPipelineLayout pipelineLayout);
     void Clear();
     void DrawImgui();
 

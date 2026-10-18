@@ -1,10 +1,10 @@
 #pragma once
-#include <vector>
 #include <vulkan/vulkan_core.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 class GfxGeometry;
+class GfxMaterial;
 
 // Transform component for GfxObject positioning, rotation, and scaling
 struct GfxTransform
@@ -41,17 +41,13 @@ class GfxObject
 
 	GfxObject(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipelineLayout, const char* Name = "Unknown");
 
-	void SetDescriptorSetAndLayout(std::vector<VkDescriptorSet> descriptorSet, 
-		VkDescriptorSetLayout descriptorSetLayout);
 	
 	// Transform component
 	GfxTransform transform;
 
-	// Non-owning reference. The application's geometry manager outlives scene objects.
+	// Non-owning references. The resource libraries outlive scene objects.
 	const GfxGeometry* geometry = nullptr;
-
-	std::vector<VkDescriptorSet> descriptorSet;
-	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+	const GfxMaterial* material = nullptr;
 
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;

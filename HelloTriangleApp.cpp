@@ -69,6 +69,7 @@ void HelloTriangleApp::InitVulkan()
     CreatePostProcessRenderPass();
     CreateShadowMapDescriptorSetLayout();
     CreateDescriptorSetLayouts();
+    materialLibrary.Initialize(gfxCtx->logicalDevice);
     CreatePostProcessDescriptorSetLayout();
     CreateGraphicsPipeline();
     CreateCommandPool();
@@ -80,10 +81,12 @@ void HelloTriangleApp::InitVulkan()
     CreateShadowMapFramebuffers();
     CreateFramebuffers();
     CreatePostProcessFramebuffers();
-    CreateTextureImage();
-    CreateTextureImageView();
-    CreateTextureSampler();
-    //gfxLoader.LoadModel();
+    // File textures are library-owned and independent from swapchain-sized images.
+    defaultTexture = textureLibrary.Load(TEXTURE_PATH);
+    if (logDebug != LogVerbosity::NONE)
+        std::cout << "Loaded texture: " << defaultTexture->GetPath() << " ("
+            << defaultTexture->GetWidth() << "x" << defaultTexture->GetHeight() << ", "
+            << defaultTexture->GetMipLevels() << " mip levels)\n";
     PopulateObjects();
     CreateUniformBuffers();
     CreateShaderStorageBuffers();
@@ -96,7 +99,6 @@ void HelloTriangleApp::InitVulkan()
     CreatePostProcessDescriptorSets();
     CreateCommandBuffers();
     CreateSyncObjects();
-    SetDescriptorsToObjects();
     UpdateComputeDescriptorSets();
     inputHandler.Init();
 }
@@ -1127,28 +1129,22 @@ void HelloTriangleApp::CreateDescriptorSetLayouts()
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    VkDescriptorSetLayoutBinding sampledImageLayoutBinding{};
-    sampledImageLayoutBinding.binding = 2;
-    sampledImageLayoutBinding.descriptorCount = 1;
-    sampledImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    sampledImageLayoutBinding.pImmutableSamplers = nullptr;
-    sampledImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
     VkDescriptorSetLayoutBinding depthShadowImageLayoutBinding{};
-    depthShadowImageLayoutBinding.binding = 3;
+    depthShadowImageLayoutBinding.binding = 2;
     depthShadowImageLayoutBinding.descriptorCount = 1;
     depthShadowImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     depthShadowImageLayoutBinding.pImmutableSamplers = nullptr;
     depthShadowImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {uboLayoutBinding, 
-        samplerLayoutBinding, sampledImageLayoutBinding, depthShadowImageLayoutBinding };
+    // Set 0 contains frame/pass data only. Material textures live in set 1.
+    std::array<VkDescriptorSetLayoutBinding, 3> bindings = { uboLayoutBinding,
+        samplerLayoutBinding, depthShadowImageLayoutBinding };
     VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{};
     descriptorSetCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorSetCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     descriptorSetCreateInfo.pBindings = bindings.data();
 
-    CreateDescriptorSetLayout(descriptorSetCreateInfo, descriptorSetLayout, "colorDescriptorSetLayout");
+    CreateDescriptorSetLayout(descriptorSetCreateInfo, frameDescriptorSetLayout, "colorDescriptorSetLayout");
 
     //Compute
 #if COMPUTE_FEATURE
@@ -1254,7 +1250,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     pushConsts.push_back(pushConstantRange);
     
     GraphicsPipelineInfo graphicPipelineInfo{};
-    graphicPipelineInfo.descriptorSetLayout = descriptorSetLayout;
+    graphicPipelineInfo.descriptorSetLayouts = { frameDescriptorSetLayout, materialLibrary.GetDescriptorSetLayout() };
     graphicPipelineInfo.shaderStages = shaderStages;
     graphicPipelineInfo.renderPass = renderPass;
     graphicPipelineInfo.msaaSamples = msaaSamples;
@@ -1354,7 +1350,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
         brdfFragmentPipelineCreateInfo};
 
     GraphicsPipelineInfo brdfGraphicPipelineInfo{};
-    brdfGraphicPipelineInfo.descriptorSetLayout = descriptorSetLayout;
+    brdfGraphicPipelineInfo.descriptorSetLayout = frameDescriptorSetLayout;
     brdfGraphicPipelineInfo.shaderStages = brdfShaderStages;
     brdfGraphicPipelineInfo.renderPass = renderPass;
     brdfGraphicPipelineInfo.msaaSamples = msaaSamples;
@@ -1746,30 +1742,6 @@ void HelloTriangleApp::EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer)
     EndSingleTimeCommandBuffer_Internal(commandBuffer);
 }
 
-void HelloTriangleApp::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
-{
-    VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer();
-
-    VkBufferImageCopy region{};
-    region.bufferOffset = 0;
-    region.bufferRowLength = 0;
-    region.bufferImageHeight = 0;
-
-    region.imageExtent.width = width; 
-    region.imageExtent.height = height; 
-    region.imageExtent.depth = 1; 
-
-    region.imageOffset = {0,0,0};
-
-    region.imageSubresource.aspectMask = VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = 0;
-    region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
-
-    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-    EndSingleTimeCommandBuffer(commandBuffer);
-}
 
 void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, 
     VkSampleCountFlagBits numSample, VkFormat format, VkImageTiling tiling, 
@@ -1816,213 +1788,28 @@ void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mip
     DebugUtils::getInstance().SetVulkanObjectName(image, imageName);
 }
 
-void HelloTriangleApp::CreateTextureImage()
-{
-    int texWidth, texHeight, texChannels;
-    unsigned char* pixels = gfxLoader.LoadTexture(&texWidth, &texHeight, &texChannels);
-
-    /*
-    -The max function selects the largest dimension. 
-    -The log2 function calculates how many times that dimension can be divided by 2. 
-    -The floor function handles cases where the largest dimension is not a power of 2. 
-    -1 is added so that the original image has a mip level.
-    */
-    mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
-
-    if (pixels == nullptr) 
-    {
-        throw std::runtime_error("Error loading image!");
-    }
-
-    VkDeviceSize imageSize = texWidth * texHeight * 4;
-    VkBuffer stagingBuffer;
-    VkDeviceMemory staginBufferMemory;
-    CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer, staginBufferMemory, "textureStagingBuffer");
-
-    void* data;
-    vkMapMemory(gfxCtx->logicalDevice, staginBufferMemory, 0, imageSize, 0, &data);
-    memcpy(data, pixels, static_cast<size_t>(imageSize));
-    vkUnmapMemory(gfxCtx->logicalDevice, staginBufferMemory);
-
-    gfxLoader.FreeTextureArrayInfo(pixels);
-
-    CreateImage(texWidth, texHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT,
-        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | 
-        VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        textureImage, textureImageMemory, "textureImage");
-
-    //TODO: make this operations in one command buffer async, now are various command buffers with single task
-
-    TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, 
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
-    CopyBufferToImage(stagingBuffer, textureImage, 
-        static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    GenerateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
-
-    vkDestroyBuffer(gfxCtx->logicalDevice, stagingBuffer, nullptr);
-    vkFreeMemory(gfxCtx->logicalDevice, staginBufferMemory, nullptr);
-}
-
-void HelloTriangleApp::GenerateMipmaps(VkImage image, VkFormat format, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels)
-{
-    VkFormatProperties formatProp{};
-    vkGetPhysicalDeviceFormatProperties(gfxCtx->physicalDevice, format, &formatProp);
-
-    //Not all formats support linear blitting
-    //TODO: implement software runtime mipmap generation for non suported types (stb_image_resize)
-    if(!(formatProp.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
-    {
-        throw std::runtime_error("texture format does not support linear blitting!");
-    }
-    
-    VkCommandBuffer cmdBuff = BeginSingleTimeCommandBuffer();
-
-    VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.image = image;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.layerCount = 1;
-    barrier.subresourceRange.levelCount = 1;
-
-    int32_t mipWidth = texWidth;
-    int32_t mipHeight = texHeight;
-
-    for (int i = 1; i < mipLevels; ++i) 
-    {
-        barrier.subresourceRange.baseMipLevel = i - 1;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-        //barrier to transition previous mip to source optimal layout so we then copy
-        vkCmdPipelineBarrier(cmdBuff, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-            0, 0,nullptr, 0, nullptr, 1, &barrier);
-
-        VkImageBlit imageBlit{};
-        imageBlit.srcOffsets[0] = {0,0,0};
-        imageBlit.srcOffsets[1] = { mipWidth, mipHeight, 1};
-        imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageBlit.srcSubresource.mipLevel = i - 1;
-        imageBlit.srcSubresource.baseArrayLayer = 0;
-        imageBlit.srcSubresource.layerCount = 1;
-
-        imageBlit.dstOffsets[0] = {0,0,0};
-        imageBlit.dstOffsets[1] = {mipWidth > 1 ? mipWidth/2 : 1, mipHeight > 1 ? mipHeight/2 : 1, 1};
-        imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageBlit.dstSubresource.mipLevel = i;
-        imageBlit.dstSubresource.baseArrayLayer = 0;
-        imageBlit.dstSubresource.layerCount = 1;
-
-        vkCmdBlitImage(cmdBuff, 
-            image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-            image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1, &imageBlit, VK_FILTER_LINEAR);
-
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-        vkCmdPipelineBarrier(cmdBuff, 
-        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 
-        0, nullptr, 
-        0, nullptr, 
-        1, &barrier);
-
-        if (mipWidth > 1) 
-        {
-            mipWidth /= 2;
-        }
-        if(mipHeight > 1)
-        {
-            mipHeight /= 2;
-        }
-    }
-
-    barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(cmdBuff, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-    0, nullptr,
-    0, nullptr,
-    1, &barrier);
-
-    EndSingleTimeCommandBuffer(cmdBuff);
-}
-
-void HelloTriangleApp::CreateTextureImageView()
-{    
-    textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, 
-        VK_IMAGE_ASPECT_COLOR_BIT, mipLevels, "AssetTextureImageView");
-}
-
-void HelloTriangleApp::CreateTextureSampler()
-{
-    VkSamplerCreateInfo samplerCreateInfo{};
-    samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-    samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
-    /*samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;*/
-
-    samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-
-    VkPhysicalDeviceFeatures dFeatures;
-    vkGetPhysicalDeviceFeatures(gfxCtx->physicalDevice, &dFeatures);
-    samplerCreateInfo.anisotropyEnable = dFeatures.samplerAnisotropy ? VK_TRUE : VK_FALSE;
-    
-    //TODO: store phys device properties in global variable instead of query here
-    VkPhysicalDeviceProperties physicalDeviceProperties;
-    vkGetPhysicalDeviceProperties(gfxCtx->physicalDevice, &physicalDeviceProperties);
-
-    samplerCreateInfo.maxAnisotropy = physicalDeviceProperties.limits.maxSamplerAnisotropy;
-
-    samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-    samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
-
-    samplerCreateInfo.compareEnable = VK_FALSE;
-    samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-    samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    samplerCreateInfo.mipLodBias = 0.0f;
-    samplerCreateInfo.maxLod = static_cast<float>(mipLevels);
-    samplerCreateInfo.minLod = 0.0f;
-
-    if (vkCreateSampler(gfxCtx->logicalDevice, &samplerCreateInfo, nullptr, &textureSampler) != VK_SUCCESS) 
-    {
-        throw std::runtime_error("Error creating sampler!");
-    }
-
-}
 
 void HelloTriangleApp::PopulateObjects()
 {
-    auto addObject = [&](const char* name, const GfxGeometry* geometry,
+    const GfxMaterial* room = materialLibrary.Create("room", defaultTexture);
+    const GfxMaterial* alternate = materialLibrary.Create("alternate", textureLibrary.Load("Textures/texture.jpg"));
+    auto addObject = [&](const char* name, const GfxGeometry* geometry, const GfxMaterial* material,
         const glm::vec3& position, const glm::vec3& scale)
     {
-        GfxObject& object = scene.CreateObject(name, geometry, graphicsPipeline, graphicsPipelineLayout);
+        GfxObject& object = scene.CreateObject(name, geometry, material, graphicsPipeline, graphicsPipelineLayout);
         object.transform.position = position;
         object.transform.scale = scale;
     };
 
-    addObject("cube", geometryLibrary.GetOrCreateCube(), glm::vec3(-35, 15, 0), glm::vec3(15));
-    // A repeated request returns the same geometry, without another GPU upload.
-    addObject("cube 2", geometryLibrary.GetOrCreateCube(), glm::vec3(35, 15, 0), glm::vec3(15));
-    addObject("sphere", geometryLibrary.GetOrCreateSphere(), glm::vec3(0, 15, 0), glm::vec3(15));
-    addObject("plane", geometryLibrary.GetOrCreatePlane(), glm::vec3(0, -50, 0), glm::vec3(9999));
+    addObject("cube", geometryLibrary.GetOrCreateCube(), room, glm::vec3(-35, 15, 0), glm::vec3(15));
+    // Identical geometry and pipeline; only the material set differs between these draws.
+    addObject("cube 2", geometryLibrary.GetOrCreateCube(), alternate, glm::vec3(35, 15, 0), glm::vec3(15));
+    addObject("sphere", geometryLibrary.GetOrCreateSphere(), room, glm::vec3(0, 15, 0), glm::vec3(15));
+    addObject("plane", geometryLibrary.GetOrCreatePlane(), room, glm::vec3(0, -50, 0), glm::vec3(9999));
+    if (logDebug != LogVerbosity::NONE)
+        std::cout << "Scene: " << scene.GetObjects().size() << " objects, "
+            << materialLibrary.GetMaterialCount() << " materials, "
+            << textureLibrary.GetLoadedTextureCount() << " textures\n";
 }
 
 void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
@@ -2153,15 +1940,13 @@ void HelloTriangleApp::CreateShadowMapDescriptorPool()
 
 void HelloTriangleApp::CreateColorPassDescriptorPool()
 {
-    std::array<VkDescriptorPoolSize, 4> descriptorPoolSize;
+    std::array<VkDescriptorPoolSize, 3> descriptorPoolSize;
     descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorPoolSize[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     descriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
     descriptorPoolSize[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     descriptorPoolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     descriptorPoolSize[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-    descriptorPoolSize[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    descriptorPoolSize[3].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -2169,7 +1954,7 @@ void HelloTriangleApp::CreateColorPassDescriptorPool()
     descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSize.data();
     descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    CreateDescriptorPool(descriptorPoolCreateInfo, descriptorPool, "colorPassDescriptorPool");
+    CreateDescriptorPool(descriptorPoolCreateInfo, frameDescriptorPool, "colorPassDescriptorPool");
 
     //Compute
 #if COMPUTE_FEATURE
@@ -2247,15 +2032,15 @@ void HelloTriangleApp::CreateShadowMapDescriptorSets()
 
 void HelloTriangleApp::CreateDescriptorSets()
 {
-    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, frameDescriptorSetLayout);
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
     descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorSetAllocateInfo.descriptorPool = descriptorPool;
+    descriptorSetAllocateInfo.descriptorPool = frameDescriptorPool;
     descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
-    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    AllocateDescriptorSets(descriptorSetAllocateInfo, descriptorSets, "colorDescriptorSet");
+    frameDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    AllocateDescriptorSets(descriptorSetAllocateInfo, frameDescriptorSets, "colorDescriptorSet");
 
 #if COMPUTE_FEATURE
     std::vector<VkDescriptorSetLayout> conmputeLayouts(MAX_FRAMES_IN_FLIGHT, computeDescriptorSetLayout);
@@ -2274,64 +2059,7 @@ void HelloTriangleApp::CreateDescriptorSets()
     }
 #endif//#if COMPUTE_FEATURE
 
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
-    {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = uniformBuffers[i];
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
-
-        std::array<VkWriteDescriptorSet, 4> writeDescriptorSet{};
-        writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[0].dstSet = descriptorSets[i];
-        writeDescriptorSet[0].dstBinding = 0;
-        writeDescriptorSet[0].dstArrayElement = 0;
-        writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSet[0].descriptorCount = 1;
-        writeDescriptorSet[0].pBufferInfo = &bufferInfo;
-
-        VkDescriptorImageInfo samplerInfo{};
-        samplerInfo.sampler = textureSampler;
-        samplerInfo.imageView = nullptr;
-        samplerInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-        writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[1].dstSet = descriptorSets[i];
-        writeDescriptorSet[1].dstBinding = 1;
-        writeDescriptorSet[1].dstArrayElement = 0;
-        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-        writeDescriptorSet[1].descriptorCount = 1;
-        writeDescriptorSet[1].pImageInfo = &samplerInfo;
-
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageView = textureImageView;
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.sampler = nullptr;
-
-        writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[2].dstSet = descriptorSets[i];
-        writeDescriptorSet[2].dstBinding = 2;
-        writeDescriptorSet[2].dstArrayElement = 0;
-        writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        writeDescriptorSet[2].descriptorCount = 1;
-        writeDescriptorSet[2].pImageInfo = &imageInfo;
-
-        VkDescriptorImageInfo imageInfo2{};
-        imageInfo2.imageView = dirShadowMapDepthImageView;
-        imageInfo2.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        imageInfo2.sampler = nullptr;
-
-        writeDescriptorSet[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[3].dstSet = descriptorSets[i];
-        writeDescriptorSet[3].dstBinding = 3;
-        writeDescriptorSet[3].dstArrayElement = 0;
-        writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        writeDescriptorSet[3].descriptorCount = 1;
-        writeDescriptorSet[3].pImageInfo = &imageInfo2;
-
-        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
-            writeDescriptorSet.data(), 0, nullptr);
-    }
+    UpdateDescriptorSets();
 }
 
 void HelloTriangleApp::CreatePostProcessDescriptorSets()
@@ -2368,7 +2096,7 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
         writeDescriptorSet[0].pBufferInfo = &bufferInfo;
 
         VkDescriptorImageInfo samplerInfo{};
-        samplerInfo.sampler = textureSampler;
+        samplerInfo.sampler = defaultTexture->GetSampler();
         samplerInfo.imageView = nullptr;
         samplerInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -2410,83 +2138,41 @@ void HelloTriangleApp::UpdatePostProcessDescriptorSets()
 
 void HelloTriangleApp::UpdateDescriptorSets()
 {
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+    // Only frame/pass resources are refreshed on swapchain recreation.
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = uniformBuffers[i];
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
+        VkDescriptorBufferInfo buffer{};
+        buffer.buffer = uniformBuffers[i];
+        buffer.range = sizeof(UniformBufferObject);
+        VkWriteDescriptorSet shadowWrite{};
+        shadowWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        shadowWrite.dstSet = shadowMapDescriptorSets[i];
+        shadowWrite.dstBinding = 0;
+        shadowWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        shadowWrite.descriptorCount = 1;
+        shadowWrite.pBufferInfo = &buffer;
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice, 1, &shadowWrite, 0, nullptr);
 
-        std::array<VkWriteDescriptorSet, 1> writeDescriptorSet{};
-        writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[0].dstSet = shadowMapDescriptorSets[i];
-        writeDescriptorSet[0].dstBinding = 0;
-        writeDescriptorSet[0].dstArrayElement = 0;
-        writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSet[0].descriptorCount = 1;
-        writeDescriptorSet[0].pBufferInfo = &bufferInfo;
-
-        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
-            writeDescriptorSet.data(), 0, nullptr);
-    }
-
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
-    {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = uniformBuffers[i];
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
-
-        std::array<VkWriteDescriptorSet, 4> writeDescriptorSet{};
-        writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[0].dstSet = descriptorSets[i];
-        writeDescriptorSet[0].dstBinding = 0;
-        writeDescriptorSet[0].dstArrayElement = 0;
-        writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSet[0].descriptorCount = 1;
-        writeDescriptorSet[0].pBufferInfo = &bufferInfo;
-
-        VkDescriptorImageInfo samplerInfo{};
-        samplerInfo.sampler = textureSampler;
-        samplerInfo.imageView = nullptr;
-        samplerInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-        writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[1].dstSet = descriptorSets[i];
-        writeDescriptorSet[1].dstBinding = 1;
-        writeDescriptorSet[1].dstArrayElement = 0;
-        writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-        writeDescriptorSet[1].descriptorCount = 1;
-        writeDescriptorSet[1].pImageInfo = &samplerInfo;
-
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageView = textureImageView;
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.sampler = nullptr;
-
-        writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[2].dstSet = descriptorSets[i];
-        writeDescriptorSet[2].dstBinding = 2;
-        writeDescriptorSet[2].dstArrayElement = 0;
-        writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        writeDescriptorSet[2].descriptorCount = 1;
-        writeDescriptorSet[2].pImageInfo = &imageInfo;
-
-        VkDescriptorImageInfo imageInfo2{};
-        imageInfo2.imageView = dirShadowMapDepthImageView;
-        imageInfo2.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        imageInfo2.sampler = nullptr;
-
-        writeDescriptorSet[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[3].dstSet = descriptorSets[i];
-        writeDescriptorSet[3].dstBinding = 3;
-        writeDescriptorSet[3].dstArrayElement = 0;
-        writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        writeDescriptorSet[3].descriptorCount = 1;
-        writeDescriptorSet[3].pImageInfo = &imageInfo2;
-
-        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writeDescriptorSet.size()),
-            writeDescriptorSet.data(), 0, nullptr);
+        VkDescriptorImageInfo shadowSampler{};
+        shadowSampler.sampler = defaultTexture->GetSampler();
+        VkDescriptorImageInfo shadowImage{};
+        shadowImage.imageView = dirShadowMapDepthImageView;
+        shadowImage.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        std::array<VkWriteDescriptorSet, 3> writes{};
+        for (uint32_t binding = 0; binding < writes.size(); ++binding)
+        {
+            writes[binding].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[binding].dstSet = frameDescriptorSets[i];
+            writes[binding].dstBinding = binding;
+            writes[binding].descriptorCount = 1;
+        }
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[0].pBufferInfo = &buffer;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        writes[1].pImageInfo = &shadowSampler;
+        writes[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        writes[2].pImageInfo = &shadowImage;
+        vkUpdateDescriptorSets(gfxCtx->logicalDevice, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 }
 
@@ -2652,13 +2338,7 @@ void HelloTriangleApp::CreateRenderFinishedSyncObjects()
     }
 }
 
-void HelloTriangleApp::SetDescriptorsToObjects()
-{
-    for (const auto& sceneObject : scene.GetObjects())
-    {
-        sceneObject->SetDescriptorSetAndLayout(descriptorSets, descriptorSetLayout);
-    }
-}
+
 
 void HelloTriangleApp::RecordComputeCommandBuffer(VkCommandBuffer commandBuffer)
 {
@@ -2814,8 +2494,9 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
         vkCmdBindIndexBuffer(commandBuffer, object->geometry->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
+        const VkDescriptorSet drawSets[] = { frameDescriptorSets[currentFrame], object->material->GetDescriptorSet() };
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-            object->graphicsPipelineLayout , 0, 1, &object->descriptorSet[currentFrame], 0, nullptr);
+            object->graphicsPipelineLayout, 0, 2, drawSets, 0, nullptr);
 
         vkCmdDrawIndexed(commandBuffer, object->geometry->indexCount, 1, 0, 0, 0);
 
@@ -3369,11 +3050,6 @@ void HelloTriangleApp::Cleanup()
 
     CleanupSwapChain();
 
-    vkDestroySampler(gfxCtx->logicalDevice, textureSampler, nullptr);
-    vkDestroyImageView(gfxCtx->logicalDevice, textureImageView, nullptr);
-    vkDestroyImage(gfxCtx->logicalDevice, textureImage, nullptr);
-    vkFreeMemory(gfxCtx->logicalDevice, textureImageMemory, nullptr);
-
     CleanupBuffers();
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) 
     {
@@ -3384,10 +3060,15 @@ void HelloTriangleApp::Cleanup()
     CleanupRenderFinishedSyncObjects();
 
     vkDestroyCommandPool(gfxCtx->logicalDevice, gfxCtx->commandPool, nullptr);
-    vkDestroyDescriptorPool(gfxCtx->logicalDevice, descriptorPool, nullptr);
+    vkDestroyDescriptorPool(gfxCtx->logicalDevice, frameDescriptorPool, nullptr);
     vkDestroyDescriptorPool(gfxCtx->logicalDevice, shadowMapDescriptorPool, nullptr);
     vkDestroyDescriptorPool(gfxCtx->logicalDevice, postProcessDescriptorPool, nullptr);
-    vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, descriptorSetLayout, nullptr);
+    // Scene references are gone and GPU work has completed.
+    materialLibrary.Clear();
+    // Descriptor sets no longer refer to the image/sampler, and GPU work is complete.
+    defaultTexture = nullptr;
+    textureLibrary.Clear();
+    vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, frameDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, shadowMapDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(gfxCtx->logicalDevice, postProcessDescriptorSetLayout, nullptr);
     vkDestroyPipeline(gfxCtx->logicalDevice, graphicsPipeline, nullptr);

@@ -7,3 +7,8 @@ Interesting vulkan concepts:
 -Multi-threaded command buffer generation
 -Multiple subpasses
 -Compute shaders / Async compute shaders
+
+
+New Ideas
+-Instancing rendering
+-Streaming

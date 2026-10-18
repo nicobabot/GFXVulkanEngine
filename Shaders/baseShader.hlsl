@@ -37,7 +37,7 @@ struct UniformBufferObject
     //uint    lightCount;
 };
 
-cbuffer MyConstantBuffer : register(b0)
+cbuffer MyConstantBuffer : register(b0, space0)
 {
    UniformBufferObject ubo;
 };
@@ -50,12 +50,15 @@ struct PushConstants
 [[vk::push_constant]]
 PushConstants pc;
 
-SamplerState mySampler : register(s1);
-Texture2D imageTexture : register(t2);
-Texture2D<float> depthShadowTexture : register(t3);
+// Frame/pass descriptors (set 0) are independent of the current material.
+SamplerState shadowSampler : register(s1, space0);
+Texture2D<float> depthShadowTexture : register(t2, space0);
+// Material descriptors (set 1): one shared set per immutable material.
+SamplerState mySampler : register(s0, space1);
+Texture2D imageTexture : register(t1, space1);
 
 #include "brdf.hlsl"
-#define SAMPLE_TEXTURE 0
+#define SAMPLE_TEXTURE 1
 #define SIMPLE_COLOR 0
 #define SHOW_NORMALS 0
 #define SHADOW_MAP 1
@@ -198,7 +201,7 @@ float GetShadowOcclussion(PSInput input, float3 lightDir)
 
 #if USE_PCF_SHADOWS == 0
     // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords
-    float closestDepth = depthShadowTexture.Sample(mySampler, projSample).r;
+    float closestDepth = depthShadowTexture.Sample(shadowSampler, projSample).r;
     return currentDepth - bias > closestDepth  ? 1.0 : 0.0;
 #else //#if USE_PCF_SHADOWS == 0
     float width, height;
@@ -210,7 +213,7 @@ float GetShadowOcclussion(PSInput input, float3 lightDir)
     {
         for(int y = -sampleIt; y<=sampleIt; ++y)
         {
-            float pcfShadow = depthShadowTexture.Sample(mySampler, projSample.xy + float2(x,y) * texelSize).r;
+            float pcfShadow = depthShadowTexture.Sample(shadowSampler, projSample.xy + float2(x,y) * texelSize).r;
             shadow += currentDepth - bias > pcfShadow ? 1.0f : 0.0f;
         }
     }
@@ -254,7 +257,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 #if SHADOWMAP_DRAW_IN_GEOMETRY
     float3 projCoordsT = input.fragPosLightSpace.xyz / input.fragPosLightSpace.w;
     projCoordsT = projCoordsT * 0.5f + 0.5f;
-    float dL = depthShadowTexture.Sample(mySampler, projCoordsT.xy).r;
+    float dL = depthShadowTexture.Sample(shadowSampler, projCoordsT.xy).r;
     return float4(dL.r, dL.r, dL.r, 1.0f);
 #endif // #if SHADOWMAP_DRAW_IN_GEOMETRY;
 

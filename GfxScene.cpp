@@ -1,13 +1,19 @@
 #include "GfxScene.h"
 #include "GfxGeometry.h"
+#include "GfxMaterial.h"
+#include "GfxTexture.h"
+#include <stdexcept>
 #include "Imgui/imgui.h"
 #include <glm/gtc/quaternion.hpp>
 
 GfxObject& GfxScene::CreateObject(const char* name, const GfxGeometry* geometry,
-    VkPipeline pipeline, VkPipelineLayout pipelineLayout)
+    const GfxMaterial* material, VkPipeline pipeline, VkPipelineLayout pipelineLayout)
 {
+    if (geometry == nullptr || material == nullptr)
+        throw std::runtime_error("Scene objects require geometry and a material");
     auto object = std::make_unique<GfxObject>(pipeline, pipelineLayout, name);
     object->geometry = geometry;
+    object->material = material;
     GfxObject& result = *object;
     objects.push_back(std::move(object));
     return result;
@@ -50,6 +56,13 @@ void GfxScene::DrawImgui()
         else
         {
             ImGui::Text("Selected Object: %s", selectedObject->name);
+            if (selectedObject->material != nullptr)
+            {
+                const GfxMaterial* material = selectedObject->material;
+                ImGui::Text("Material: %s", material->GetName().c_str());
+                ImGui::Text("Material address: %p", static_cast<const void*>(material));
+                ImGui::TextWrapped("Base color: %s", material->GetBaseColorTexture()->GetPath().c_str());
+            }
             if (selectedObject->geometry != nullptr)
             {
                 const GfxGeometry* geometry = selectedObject->geometry;

@@ -1,8 +1,5 @@
 #include "ModelLoader.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
@@ -106,14 +103,4 @@ void GfxLoader::LoadModel()
 			indices.push_back(uniqueVertices[vertex]);
 		}
 	}
-}
-
-unsigned char* GfxLoader::LoadTexture(int* width, int* height, int* channels)
-{
-	return stbi_load(TEXTURE_PATH.c_str(), width, height, channels, STBI_rgb_alpha);
-}
-
-void GfxLoader::FreeTextureArrayInfo(unsigned char* pixels)
-{
-	stbi_image_free(pixels);
 }

@@ -360,8 +360,10 @@ void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipeline
     //TODO
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = 1;
-    pipelineLayoutCreateInfo.pSetLayouts = &graphicPipelineInfo.descriptorSetLayout;
+    pipelineLayoutCreateInfo.setLayoutCount = graphicPipelineInfo.descriptorSetLayouts.empty()
+        ? 1u : static_cast<uint32_t>(graphicPipelineInfo.descriptorSetLayouts.size());
+    pipelineLayoutCreateInfo.pSetLayouts = graphicPipelineInfo.descriptorSetLayouts.empty()
+        ? &graphicPipelineInfo.descriptorSetLayout : graphicPipelineInfo.descriptorSetLayouts.data();
     pipelineLayoutCreateInfo.pushConstantRangeCount = graphicPipelineInfo.pushConsts.size();
     pipelineLayoutCreateInfo.pPushConstantRanges = graphicPipelineInfo.pushConsts.data();
 

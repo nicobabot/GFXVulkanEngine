@@ -57,6 +57,15 @@
     <ClCompile Include="GfxGeometryLibrary.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GfxTexture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GfxTextureLibrary.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GfxMaterialLibrary.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="BasicPolygons.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -105,6 +114,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GfxGeometryLibrary.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GfxTexture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GfxTextureLibrary.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GfxMaterial.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GfxMaterialLibrary.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="gfxMaths.h">

@@ -6,7 +6,9 @@ class GfxContext;
 struct GraphicsPipelineInfo 
 {
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+	// Ordered layouts; empty preserves the single-set path used by other passes.
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 	VkExtent2D viewportExtent;
 	VkSampleCountFlagBits msaaSamples;
 	VkRenderPass renderPass;

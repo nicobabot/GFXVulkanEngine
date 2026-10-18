@@ -10,8 +10,6 @@ class GfxLoader
 {
 public:
 	void LoadModel();
-	unsigned char* LoadTexture(int* width, int* height, int* channels);
-	void FreeTextureArrayInfo(unsigned char* pixels);
 
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;

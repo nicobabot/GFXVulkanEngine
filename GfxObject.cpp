@@ -4,10 +4,3 @@ GfxObject::GfxObject(VkPipeline graphicsPipeline, VkPipelineLayout graphicsPipel
     : graphicsPipeline(graphicsPipeline), graphicsPipelineLayout(graphicsPipelineLayout), name(Name)
 {
 }
-
-void GfxObject::SetDescriptorSetAndLayout(std::vector<VkDescriptorSet> descriptorSet,
-    VkDescriptorSetLayout descriptorSetLayout)
-{
-    this->descriptorSet = descriptorSet;
-    this->descriptorSetLayout = descriptorSetLayout;
-}

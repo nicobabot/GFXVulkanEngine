@@ -18,6 +18,8 @@
 #include "DebugUtils.h"
 #include "GfxPipelineManager.h"
 #include "GfxGeometryLibrary.h"
+#include "GfxTextureLibrary.h"
+#include "GfxMaterialLibrary.h"
 #include "GfxScene.h"
 void CreateGraphicsPipeline_Internal(const GraphicsPipelineInfo& graphicPipelineInfo,
     VkPipelineLayout& graphicPipelineLayout, VkPipeline& graphicPipeline, const char* VkPipelineName, const char* VkPipelineLayoutName);
@@ -87,6 +89,10 @@ class HelloTriangleApp
 private:
     GfxScene scene;
     GfxGeometryLibrary geometryLibrary;
+    GfxTextureLibrary textureLibrary;
+    GfxMaterialLibrary materialLibrary;
+    // Shared sampler source for shadow sampling and postprocess.
+    const GfxTexture* defaultTexture = nullptr;
     GLFWwindow *window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -104,7 +110,7 @@ private:
     VkRenderPass postProcessRenderPass;
 
     VkDescriptorSetLayout shadowMapDescriptorSetLayout;
-    VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorSetLayout frameDescriptorSetLayout;
     VkDescriptorSetLayout postProcessDescriptorSetLayout;
     VkDescriptorSetLayout computeDescriptorSetLayout;
 
@@ -138,14 +144,6 @@ private:
     VkImage dirShadowMapDepthImage;
     VkDeviceMemory dirShadowMapDepthMemory;
     VkImageView dirShadowMapDepthImageView;
-
-    //First texture
-    VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
-    uint32_t mipLevels;
-    //TODO: Make sampler not related with texture
-    VkSampler textureSampler;
 
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -204,12 +202,12 @@ private:
     std::vector<VkDeviceMemory> shaderStorageBuffersMemory;
 
     VkDescriptorPool shadowMapDescriptorPool;
-    VkDescriptorPool descriptorPool;
+    VkDescriptorPool frameDescriptorPool;
     VkDescriptorPool computeDescriptorPool;
     VkDescriptorPool postProcessDescriptorPool;
 
     std::vector<VkDescriptorSet> shadowMapDescriptorSets;
-    std::vector<VkDescriptorSet> descriptorSets;
+    std::vector<VkDescriptorSet> frameDescriptorSets;
     std::vector<VkDescriptorSet> computeDescriptorSets;
     std::vector<VkDescriptorSet> vrsComputeDescriptorSets;
     std::vector<VkDescriptorSet> postProcessDescriptorSets;
@@ -224,7 +222,6 @@ private:
     bool framebufferResized = false;
 
     InputHandler inputHandler;
-    GfxLoader gfxLoader;
 
 //Methods
 public:
@@ -301,13 +298,8 @@ private:
     void CreatePostProcessResources();
     VkCommandBuffer BeginSingleTimeCommandBuffer();
     void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
-    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
     void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSample, VkFormat format, VkImageTiling tiling,
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, const char* imageName = "Unknown");
-    void CreateTextureImage();
-    void GenerateMipmaps(VkImage image, VkFormat format, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels );
-    void CreateTextureImageView();
-    void CreateTextureSampler();
     void PopulateObjects();
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usageFlags, 
         VkMemoryPropertyFlags memoryFlags, VkBuffer& newBuffer, VkDeviceMemory& bufferMemory, const char* BufferName = "Unknown", const char* BufferMemoryName = "Unknown");
@@ -318,7 +310,6 @@ private:
     void CreateCommandBuffers();
     void CreateSyncObjects();
     void CreateRenderFinishedSyncObjects();
-    void SetDescriptorsToObjects();
     void RecordComputeCommandBuffer(VkCommandBuffer commandBuffer);
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryFlags);

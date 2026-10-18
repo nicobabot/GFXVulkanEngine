@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Set these before importing C++ targets: tracker paths are derived during import. -->
+  <PropertyGroup>
+    <IntDir>$(MSBuildProjectDirectory)\Tests\obj\</IntDir>
+    <TargetName>TextureLibraryTests</TargetName>
+  </PropertyGroup>
+  <!-- Reuse the engine toolchain and dependency paths instead of maintaining a second configuration. -->
+  <Import Project="GFXVulkanEngine.vcxproj" />
+  <PropertyGroup>
+    <ProjectGuid>{6E9433F1-B08E-4E55-9938-54CA643B95C8}</ProjectGuid>
+    <RootNamespace>TextureLibraryTests</RootNamespace>
+    <OutDir>$(MSBuildProjectDirectory)\Tests\bin\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\Tests\obj\</IntDir>
+    <TargetName>TextureLibraryTests</TargetName>
+    <TargetPath>$(OutDir)$(TargetName).exe</TargetPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Remove="@(ClCompile)" />
+    <ClCompile Include="Tests\TextureLibraryTests.cpp" />
+    <ClCompile Include="GfxTexture.cpp" />
+    <ClCompile Include="GfxTextureLibrary.cpp" />
+    <ClCompile Include="GfxMaterialLibrary.cpp" />
+    <ClCompile Include="GfxContext.cpp" />
+    <ClCompile Include="GfxPipelineManager.cpp" />
+    <ClCompile Include="DebugUtils.cpp" />
+  </ItemGroup>
+</Project>
