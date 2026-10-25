@@ -2,6 +2,18 @@
 #include <filesystem>
 #include <stdexcept>
 
+const GfxTexture* GfxTextureLibrary::GetWhite()
+{
+    const Key key{ "builtin:white", GfxTextureColorSpace::SRGB };
+    const auto found = textures.find(key);
+    if (found != textures.end())
+        return found->second.get();
+    auto texture = std::make_unique<GfxTexture>();
+    const GfxTexture* result = texture.get();
+    textures.emplace(key, std::move(texture));
+    return result;
+}
+
 const GfxTexture* GfxTextureLibrary::Load(const std::string& path, GfxTextureColorSpace colorSpace)
 {
     if (path.empty())

@@ -45,6 +45,7 @@ cbuffer MyConstantBuffer : register(b0, space0)
 struct PushConstants
 {
     float4x4 modelM;
+    float4 baseColorFactor;
 };
 
 [[vk::push_constant]]
@@ -163,6 +164,7 @@ float4 FilamentBrdfLight(PSInput input, float3 l)
 #if( SAMPLE_TEXTURE )
     diffuseColor = imageTexture.Sample(mySampler, input.fragTexCoord.rg);
 #endif //#if(SAMPLE_TEXTURE)
+    diffuseColor *= pc.baseColorFactor;
     float ambientColor = 1.0f;
 
     float specularStrength = 0.2f;

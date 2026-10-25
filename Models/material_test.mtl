@@ -1,0 +1,10 @@
+# Minimal opaque material fixture: two colors and one file texture.
+newmtl red
+Kd 0.9 0.05 0.05
+
+newmtl green
+Kd 0.05 0.9 0.05
+
+newmtl textured
+Kd 1 1 1
+map_Kd ../Textures/texture.jpg

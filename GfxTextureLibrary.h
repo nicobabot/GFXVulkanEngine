@@ -8,6 +8,7 @@
 class GfxTextureLibrary
 {
 public:
+    const GfxTexture* GetWhite();
     const GfxTexture* Load(const std::string& path,
         GfxTextureColorSpace colorSpace = GfxTextureColorSpace::SRGB);
     size_t GetLoadedTextureCount() const { return textures.size(); }

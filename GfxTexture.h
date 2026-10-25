@@ -13,6 +13,8 @@ class GfxTexture
 {
 public:
     GfxTexture(const std::string& path, GfxTextureColorSpace colorSpace);
+    // Built-in 1x1 white texture for untextured materials.
+    GfxTexture();
     ~GfxTexture();
     GfxTexture(const GfxTexture&) = delete;
     GfxTexture& operator=(const GfxTexture&) = delete;

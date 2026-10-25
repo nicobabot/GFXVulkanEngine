@@ -3,6 +3,7 @@
 #include "HelloTriangleApp.h"
 #include "GfxOptions.h"
 #include "GfxScene.h"
+#include "Imgui/ImGuizmo/ImGuizmo.h"
 
 ImguiVulkanObjects ImguiHandler::vkObjects{};
 VkDescriptorPool ImguiHandler::imguiDescriptorPool = VK_NULL_HANDLE;
@@ -35,14 +36,19 @@ void ImguiHandler::InitVulkan(ImguiVulkanObjects vulkanObj)
 {
     vkObjects = vulkanObj;
 
-    VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 };
+    // ImGui 1.92.8 uses separate image and sampler descriptor sets.
+    const VkDescriptorPoolSize poolSizes[] = {
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 32 },
+        { VK_DESCRIPTOR_TYPE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_SAMPLER_POOL_SIZE }
+    };
     VkDescriptorPoolCreateInfo pool_info{};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    pool_info.maxSets = 10;
-    pool_info.poolSizeCount = 1;
-    pool_info.pPoolSizes = &pool_size;
-    vkCreateDescriptorPool(vkObjects.logicalDevice, &pool_info, nullptr, &imguiDescriptorPool);
+    pool_info.maxSets = 32 + IMGUI_IMPL_VULKAN_MINIMUM_SAMPLER_POOL_SIZE;
+    pool_info.poolSizeCount = 2;
+    pool_info.pPoolSizes = poolSizes;
+    if (vkCreateDescriptorPool(vkObjects.logicalDevice, &pool_info, nullptr, &imguiDescriptorPool) != VK_SUCCESS)
+        throw std::runtime_error("Could not create ImGui descriptor pool");
 
     ImGui_ImplVulkan_InitInfo init_info{};
     init_info.Instance = vkObjects.instance;
@@ -67,12 +73,11 @@ void ImguiHandler::NewFrame()
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    ImGuizmo::BeginFrame();
 }
 
-void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer, GfxScene& scene)
+void ImguiHandler::BuildFrame(GfxScene& scene, const glm::mat4& view, const glm::mat4& projection)
 {
-    DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "IMGUI");
-
     // --- Your ImGui UI code here ---
     //ImGui::ShowDemoWindow();  // useful for testing
 
@@ -80,7 +85,7 @@ void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer, GfxScene& scene)
   //bool hierarcyIsOpen = true;
    // if (ImGui::Begin("Object Hierarchy", &hierarcyIsOpen, 0))
     {
-        scene.DrawImgui();
+        scene.DrawImgui(view, projection);
     }
     
    // ImGui::End();
@@ -106,6 +111,11 @@ void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer, GfxScene& scene)
 
     // --- Record to command buffer ---
     ImGui::Render();
+}
+
+void ImguiHandler::Draw(const VkCommandBuffer& commandBuffer)
+{
+    DebugUtils::getInstance().BeginDebugLabel(commandBuffer, "IMGUI");
     ImDrawData* draw_data = ImGui::GetDrawData();
     ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
 

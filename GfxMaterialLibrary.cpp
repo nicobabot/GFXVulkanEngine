@@ -1,5 +1,8 @@
 #include "GfxMaterialLibrary.h"
 #include "GfxTexture.h"
+#include "GfxTextureLibrary.h"
+#include "GfxGeometry.h"
+#include <cmath>
 #include <array>
 #include <stdexcept>
 
@@ -38,15 +41,19 @@ void GfxMaterialLibrary::Initialize(VkDevice requestedDevice, uint32_t requested
     catch (...) { Clear(); throw; }
 }
 
-const GfxMaterial* GfxMaterialLibrary::Create(const std::string& name, const GfxTexture* texture)
+const GfxMaterial* GfxMaterialLibrary::Create(const std::string& name, const GfxTexture* texture,
+    const glm::vec4& baseColorFactor)
 {
+    for (int i = 0; i < 4; ++i)
+        if (!std::isfinite(baseColorFactor[i]) || baseColorFactor[i] < 0)
+            throw std::runtime_error("Material color must be finite and nonnegative: " + name);
     if (device == VK_NULL_HANDLE || texture == nullptr || name.empty())
         throw std::runtime_error("Creating a material requires an initialized library, name, and texture");
     const auto found = materials.find(name);
     if (found != materials.end())
     {
-        if (found->second->baseColorTexture != texture)
-            throw std::runtime_error("Material already exists with a different texture: " + name);
+        if (found->second->baseColorTexture != texture || found->second->baseColorFactor != baseColorFactor)
+            throw std::runtime_error("Material already exists with different properties: " + name);
         return found->second.get();
     }
     if (materials.size() >= capacity)
@@ -55,6 +62,7 @@ const GfxMaterial* GfxMaterialLibrary::Create(const std::string& name, const Gfx
     auto material = std::make_unique<GfxMaterial>();
     material->name = name;
     material->baseColorTexture = texture;
+    material->baseColorFactor = baseColorFactor;
     GfxMaterial* result = material.get();
     // Allocate the map node before consuming a descriptor slot. A CPU allocation
     // failure must not leave an unreachable set in the fixed-capacity pool.
@@ -87,6 +95,29 @@ const GfxMaterial* GfxMaterialLibrary::Create(const std::string& name, const Gfx
     writes[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     writes[1].pImageInfo = &image;
     vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+    return result;
+}
+
+std::vector<const GfxMaterial*> GfxMaterialLibrary::CreateObjMaterials(const GfxGeometry& geometry,
+    GfxTextureLibrary& textures, const GfxMaterial* fallback)
+{
+    if (fallback == nullptr || geometry.sourceMaterials.empty())
+        throw std::runtime_error("OBJ materials require source metadata and a fallback");
+    std::vector<const GfxMaterial*> result(geometry.sourceMaterials.size(), fallback);
+    // Import only referenced slots; unused MTL entries need no GPU resources.
+    for (const auto& submesh : geometry.submeshes)
+    {
+        const uint32_t slot = submesh.materialSlot;
+        if (slot >= result.size())
+            throw std::runtime_error("OBJ submesh material slot out of range");
+        if (slot == 0 || result[slot] != fallback)
+            continue;
+        const auto& source = geometry.sourceMaterials[slot];
+        const GfxTexture* texture = source.baseColorTexture.empty()
+            ? textures.GetWhite() : textures.Load(source.baseColorTexture);
+        result[slot] = Create("obj:" + geometry.name + ":slot:" + std::to_string(slot),
+            texture, glm::vec4(source.baseColor, 1.0f));
+    }
     return result;
 }
 

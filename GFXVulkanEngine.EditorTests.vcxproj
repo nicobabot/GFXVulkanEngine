@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <IntDir>$(MSBuildProjectDirectory)\Tests\obj\Editor\</IntDir>
+    <TargetName>EditorTests</TargetName>
+  </PropertyGroup>
+  <Import Project="GFXVulkanEngine.vcxproj" />
+  <PropertyGroup>
+    <ProjectGuid>{8922D65F-582C-4B12-BF44-E87E0B5F04DB}</ProjectGuid>
+    <RootNamespace>EditorTests</RootNamespace>
+    <OutDir>$(MSBuildProjectDirectory)\Tests\bin\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\Tests\obj\Editor\</IntDir>
+    <TargetName>EditorTests</TargetName>
+    <TargetPath>$(OutDir)$(TargetName).exe</TargetPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Remove="@(ClCompile)" />
+    <ClCompile Include="Tests\EditorTests.cpp" />
+    <ClCompile Include="GfxObject.cpp" />
+    <ClCompile Include="GfxScene.cpp" />
+    <ClCompile Include="Imgui\imgui.cpp" />
+    <ClCompile Include="Imgui\imgui_draw.cpp" />
+    <ClCompile Include="Imgui\imgui_widgets.cpp" />
+    <ClCompile Include="Imgui\imgui_tables.cpp" />
+    <ClCompile Include="Imgui\ImGuizmo\ImGuizmo.cpp">
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\Imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemGroup>
+</Project>

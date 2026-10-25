@@ -222,6 +222,9 @@ private:
     bool framebufferResized = false;
 
     InputHandler inputHandler;
+    // CPU column-major matrices shared by scene rendering and editor tools.
+    glm::mat4 cameraView = glm::mat4(1.0f);
+    glm::mat4 cameraProjection = glm::mat4(1.0f);
 
 //Methods
 public:
@@ -316,6 +319,7 @@ private:
     VkShaderModule CreateShaderModule(const std::vector<char>& code, const char* Name = "Unknown");
     void MainLoop();
     void UpdateUniformBuffers(uint32_t currentImage);
+    void UpdateCameraMatrices();
     void DrawFrame();
     void CheckRenderSettings();
     void EndFrameLayoutTransitions(VkCommandBuffer commandBuffer);

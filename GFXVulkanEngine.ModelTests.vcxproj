@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <IntDir>$(MSBuildProjectDirectory)\Tests\obj\Model\</IntDir>
+    <TargetName>ModelLoaderTests</TargetName>
+  </PropertyGroup>
+  <!-- Reuse the engine's installed toolchain and dependency include paths. -->
+  <Import Project="GFXVulkanEngine.vcxproj" />
+  <PropertyGroup>
+    <ProjectGuid>{97D9B013-5855-47FC-905E-EF2C6FDE14AD}</ProjectGuid>
+    <RootNamespace>ModelLoaderTests</RootNamespace>
+    <OutDir>$(MSBuildProjectDirectory)\Tests\bin\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\Tests\obj\Model\</IntDir>
+    <TargetName>ModelLoaderTests</TargetName>
+    <TargetPath>$(OutDir)$(TargetName).exe</TargetPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Remove="@(ClCompile)" />
+    <ClCompile Include="Tests\ModelLoaderTests.cpp" />
+    <ClCompile Include="ModelLoader.cpp" />
+  </ItemGroup>
+</Project>

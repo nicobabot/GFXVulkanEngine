@@ -2,6 +2,8 @@
 #include <iostream>
 #include <windows.h>
 #include "utils.h"
+#include "Imgui/imgui.h"
+#include "Imgui/ImGuizmo/ImGuizmo.h"
 //#include <string.h>
 
 void InputHandler::Init()
@@ -28,6 +30,17 @@ void InputHandler::UpdateCameraVectors()
 
 void InputHandler::ReactToEvents(GLFWwindow &window)
 {
+    // UI editing must not move the camera or trigger application shortcuts.
+    if (ImGui::GetCurrentContext() != nullptr)
+    {
+        const auto& io = ImGui::GetIO();
+        if (io.WantCaptureKeyboard || io.WantCaptureMouse || ImGuizmo::IsUsingAny())
+        {
+            glfwGetCursorPos(&window, &lastMouseX, &lastMouseY);
+            firstMouse = true;
+            return;
+        }
+    }
 	
 	/*bool ctrl = glfwGetKey(&window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
 		glfwGetKey(&window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;

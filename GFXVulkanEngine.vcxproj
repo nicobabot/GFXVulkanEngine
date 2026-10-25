@@ -164,6 +164,9 @@
     <ClCompile Include="GfxPipelineManager.cpp" />
     <ClCompile Include="HelloTriangleApp.cpp" />
     <ClCompile Include="ImguiHandler.cpp" />
+    <ClCompile Include="Imgui\ImGuizmo\ImGuizmo.cpp">
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\Imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="Imgui\imgui.cpp" />
     <ClCompile Include="Imgui\imgui_demo.cpp" />
     <ClCompile Include="Imgui\imgui_draw.cpp" />
@@ -182,6 +185,7 @@
     <ClInclude Include="Dvar.h" />
     <ClInclude Include="GfxContext.h" />
     <ClInclude Include="GfxGeometry.h" />
+    <ClInclude Include="GfxMeshData.h" />
     <ClInclude Include="GfxGeometryLibrary.h" />
     <ClInclude Include="GfxTexture.h" />
     <ClInclude Include="GfxTextureLibrary.h" />
@@ -194,6 +198,7 @@
     <ClInclude Include="GfxPipelineManager.h" />
     <ClInclude Include="HelloTriangleApp.h" />
     <ClInclude Include="ImguiHandler.h" />
+    <ClInclude Include="Imgui\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="Imgui\imconfig.h" />
     <ClInclude Include="Imgui\imgui.h" />
     <ClInclude Include="Imgui\imgui_impl_glfw.h" />

@@ -21,6 +21,11 @@
     <ClCompile Include="GfxTexture.cpp" />
     <ClCompile Include="GfxTextureLibrary.cpp" />
     <ClCompile Include="GfxMaterialLibrary.cpp" />
+    <ClCompile Include="GfxGeometry.cpp" />
+    <ClCompile Include="GfxObject.cpp" />
+    <ClCompile Include="GfxGeometryLibrary.cpp" />
+    <ClCompile Include="BasicPolygons.cpp" />
+    <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="GfxContext.cpp" />
     <ClCompile Include="GfxPipelineManager.cpp" />
     <ClCompile Include="DebugUtils.cpp" />

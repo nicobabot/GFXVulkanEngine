@@ -2,6 +2,25 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Build editor tests (Debug x64)",
+            "type": "process",
+            "command": "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
+            "args": [
+                "${workspaceFolder}/GFXVulkanEngine.EditorTests.vcxproj",
+                "/m", "/t:Build", "/p:Configuration=Debug", "/p:Platform=x64", "/verbosity:minimal"
+            ],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Test editor and gizmo (CPU)",
+            "type": "process",
+            "command": "${workspaceFolder}/Tests/bin/EditorTests.exe",
+            "dependsOn": "Build editor tests (Debug x64)",
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
             "label": "Build engine (Debug x64)",
             "type": "process",
             "command": "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
@@ -46,6 +65,25 @@
                 "cwd": "${workspaceFolder}",
                 "env": { "VK_LAYER_VALIDATE_SYNC": "1" }
             },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build OBJ tests (Debug x64)",
+            "type": "process",
+            "command": "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
+            "args": [
+                "${workspaceFolder}/GFXVulkanEngine.ModelTests.vcxproj",
+                "/m", "/t:Build", "/p:Configuration=Debug", "/p:Platform=x64", "/verbosity:minimal"
+            ],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Test OBJ loader (CPU)",
+            "type": "process",
+            "command": "${workspaceFolder}/Tests/bin/ModelLoaderTests.exe",
+            "dependsOn": "Build OBJ tests (Debug x64)",
+            "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
         }
     ]

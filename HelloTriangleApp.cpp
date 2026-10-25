@@ -10,6 +10,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <cstring>
+#include <cstddef>
 
 
 
@@ -1255,7 +1256,10 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     graphicPipelineInfo.renderPass = renderPass;
     graphicPipelineInfo.msaaSamples = msaaSamples;
     graphicPipelineInfo.viewportExtent = swapChainExtent;
-    graphicPipelineInfo.pushConsts = pushConsts;
+    // HLSL declares one 80-byte block in both stages, even when a member is unused.
+    static_assert(sizeof(PushConstantData) == 64 && sizeof(glm::vec4) == 16,
+        "CPU and HLSL push constant offsets must agree");
+    graphicPipelineInfo.pushConsts = { { VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 80 } };
     // Vulkan reduces the effective shading rate to 1x1 when sample shading is enabled.
     graphicPipelineInfo.sampleShadingEnable = !fragmentShadingRateAttachmentSupported;
     graphicPipelineInfo.useFragmentShadingRate = fragmentShadingRateAttachmentSupported;
@@ -1806,8 +1810,43 @@ void HelloTriangleApp::PopulateObjects()
     addObject("cube 2", geometryLibrary.GetOrCreateCube(), alternate, glm::vec3(35, 15, 0), glm::vec3(15));
     addObject("sphere", geometryLibrary.GetOrCreateSphere(), room, glm::vec3(0, 15, 0), glm::vec3(15));
     addObject("plane", geometryLibrary.GetOrCreatePlane(), room, glm::vec3(0, -50, 0), glm::vec3(9999));
+
+    const GfxGeometry* roomGeometry = geometryLibrary.LoadObj(MODEL_PATH);
+    GfxObject& importedRoom = scene.CreateObject("viking room", roomGeometry, room,
+        graphicsPipeline, graphicsPipelineLayout);
+    importedRoom.materials = materialLibrary.CreateObjMaterials(*roomGeometry, textureLibrary, room);
+    // This particular Blender asset is Z-up. Import stays in source space;
+    // orientation, size, and placement are choices made by this scene instance.
+    importedRoom.transform.SetEulerAngles(glm::radians(glm::vec3(-90.0f, 0.0f, 0.0f)));
+    const glm::mat3 rotation = glm::mat3_cast(importedRoom.transform.rotation);
+    glm::vec3 rotatedMin = rotation * roomGeometry->boundsMin;
+    glm::vec3 rotatedMax = rotatedMin;
+    for (uint32_t corner = 0; corner < 8; ++corner)
+    {
+        const glm::vec3 localCorner(
+            (corner & 1) ? roomGeometry->boundsMax.x : roomGeometry->boundsMin.x,
+            (corner & 2) ? roomGeometry->boundsMax.y : roomGeometry->boundsMin.y,
+            (corner & 4) ? roomGeometry->boundsMax.z : roomGeometry->boundsMin.z);
+        const glm::vec3 rotatedCorner = rotation * localCorner;
+        rotatedMin = glm::min(rotatedMin, rotatedCorner);
+        rotatedMax = glm::max(rotatedMax, rotatedCorner);
+    }
+    const glm::vec3 extent = rotatedMax - rotatedMin;
+    const float uniformScale = 55.0f / (std::max)(extent.x, (std::max)(extent.y, extent.z));
+    importedRoom.transform.scale = glm::vec3(uniformScale);
+    const glm::vec3 localGroundCenter((rotatedMin.x + rotatedMax.x) * 0.5f,
+        rotatedMin.y, (rotatedMin.z + rotatedMax.z) * 0.5f);
+    // Rest on the existing ground plane and keep clear of the primitive tests.
+    importedRoom.transform.position = glm::vec3(0.0f, -50.0f, 45.0f) - localGroundCenter * uniformScale;
+    const GfxGeometry* panels = geometryLibrary.LoadObj("Models/material_test.obj");
+    GfxObject& materialTest = scene.CreateObject("material panels", panels, room,
+        graphicsPipeline, graphicsPipelineLayout);
+    materialTest.materials = materialLibrary.CreateObjMaterials(*panels, textureLibrary, room);
+    materialTest.transform.position = glm::vec3(0.0f, -15.0f, -25.0f);
+    materialTest.transform.scale = glm::vec3(15.0f);
     if (logDebug != LogVerbosity::NONE)
         std::cout << "Scene: " << scene.GetObjects().size() << " objects, "
+            << geometryLibrary.GetGeometryCount() << " geometries, "
             << materialLibrary.GetMaterialCount() << " materials, "
             << textureLibrary.GetLoadedTextureCount() << " textures\n";
 }
@@ -2471,8 +2510,6 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
         PushConstantData pc;
         pc.modelM = glm::transpose(object->transform.GetModelMatrix());
-        vkCmdPushConstants(commandBuffer, object->graphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-            0, sizeof(PushConstantData), &pc);
 
         VkViewport viewport{};
         viewport.x = 0.0f;
@@ -2494,11 +2531,24 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
         vkCmdBindIndexBuffer(commandBuffer, object->geometry->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-        const VkDescriptorSet drawSets[] = { frameDescriptorSets[currentFrame], object->material->GetDescriptorSet() };
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-            object->graphicsPipelineLayout, 0, 2, drawSets, 0, nullptr);
-
-        vkCmdDrawIndexed(commandBuffer, object->geometry->indexCount, 1, 0, 0, 0);
+        for (const GfxSubmesh& submesh : object->geometry->submeshes)
+        {
+            const GfxMaterial* material = object->GetMaterial(submesh.materialSlot);
+            const VkDescriptorSet drawSets[] = { frameDescriptorSets[currentFrame], material->GetDescriptorSet() };
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                object->graphicsPipelineLayout, 0, 2, drawSets, 0, nullptr);
+            struct DrawConstants
+            {
+                glm::mat4 modelM;
+                glm::vec4 baseColorFactor;
+            };
+            static_assert(sizeof(DrawConstants) == 80 && offsetof(DrawConstants, baseColorFactor) == 64,
+                "Draw constants must match the HLSL block");
+            const DrawConstants drawConstants{ pc.modelM, material->GetBaseColorFactor() };
+            vkCmdPushConstants(commandBuffer, object->graphicsPipelineLayout,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(drawConstants), &drawConstants);
+            vkCmdDrawIndexed(commandBuffer, submesh.indexCount, 1, submesh.firstIndex, 0, 0);
+        }
 
         DebugUtils::getInstance().EndDebugLabel(commandBuffer);
     }
@@ -2586,7 +2636,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
 
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(quadIndices.size()), 1, 0, 0, 0);
 
-    ImguiHandler::Draw(commandBuffer, scene);
+    ImguiHandler::Draw(commandBuffer);
 
     // End the render pass
     vkCmdEndRenderPass(commandBuffer);
@@ -2693,10 +2743,11 @@ void HelloTriangleApp::MainLoop()
 {
     while (!glfwWindowShouldClose(window) && !inputHandler.WantToExit()) 
     {
-        ImguiHandler::NewFrame();
-
         glfwPollEvents();
+        ImguiHandler::NewFrame();
         inputHandler.ReactToEvents(*window);
+        UpdateCameraMatrices();
+        ImguiHandler::BuildFrame(scene, cameraView, cameraProjection);
 
         DrawFrame();
 
@@ -2704,6 +2755,18 @@ void HelloTriangleApp::MainLoop()
     }
 
     vkDeviceWaitIdle(gfxCtx->logicalDevice);
+}
+
+void HelloTriangleApp::UpdateCameraMatrices()
+{
+    const glm::vec3 eye = inputHandler.GetPosition();
+    cameraView = glm::lookAt(eye, eye + inputHandler.GetFront(), glm::vec3(0, 1, 0));
+    if (swapChainExtent.width != 0 && swapChainExtent.height != 0)
+    {
+        cameraProjection = glm::perspective(glm::radians(45.0f),
+            static_cast<float>(swapChainExtent.width) / swapChainExtent.height, 0.1f, 500.0f);
+        cameraProjection[1][1] *= -1.0f;
+    }
 }
 
 void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
@@ -2720,11 +2783,8 @@ void HelloTriangleApp::UpdateUniformBuffers(uint32_t currentImage)
     glm::vec3 cameraFront = inputHandler.GetFront();
     
     ubo.viewPos = eyePos;
-    ubo.viewM = glm::transpose(glm::lookAt(eyePos, eyePos + cameraFront, glm::vec3(0, 1, 0)));
-    ubo.projM = glm::perspective(glm::radians(45.0f),
-        swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 500.0f);
-    ubo.projM[1][1] *= -1;
-    ubo.projM = glm::transpose(ubo.projM);
+    ubo.viewM = glm::transpose(cameraView);
+    ubo.projM = glm::transpose(cameraProjection);
     ubo.debugUtil = inputHandler.IsDebugEnabled() ? 1:0;
     ubo.deltaTime = time;
 

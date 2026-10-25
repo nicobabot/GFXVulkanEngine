@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <vector>
 class GfxGeometry;
 class GfxMaterial;
 
@@ -33,6 +34,10 @@ struct GfxTransform
 	{
 		return glm::eulerAngles(rotation);
 	}
+
+    // Accept only finite, non-singular TRS matrices (no shear or perspective).
+    // Keep existing scale signs when possible, including mirrored instances.
+    bool TrySetModelMatrix(const glm::mat4& matrix);
 };
 
 class GfxObject
@@ -48,6 +53,12 @@ class GfxObject
 	// Non-owning references. The resource libraries outlive scene objects.
 	const GfxGeometry* geometry = nullptr;
 	const GfxMaterial* material = nullptr;
+    // Per-instance slot overrides. Empty/null entries use the object's fallback.
+    std::vector<const GfxMaterial*> materials;
+    const GfxMaterial* GetMaterial(uint32_t slot) const
+    {
+        return slot < materials.size() && materials[slot] != nullptr ? materials[slot] : material;
+    }
 
 	VkPipelineLayout graphicsPipelineLayout;
 	VkPipeline graphicsPipeline;

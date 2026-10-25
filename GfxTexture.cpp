@@ -38,6 +38,22 @@ GfxTexture::~GfxTexture()
     Destroy();
 }
 
+GfxTexture::GfxTexture() : path("builtin:white"), format(VK_FORMAT_R8G8B8A8_SRGB)
+{
+    if (gfxCtx == nullptr || gfxCtx->logicalDevice == VK_NULL_HANDLE)
+        throw std::runtime_error("White texture requires an initialized Vulkan device");
+    device = gfxCtx->logicalDevice;
+    width = height = 1;
+    try
+    {
+        const unsigned char pixels[] = { 255, 255, 255, 255 };
+        CreateImage();
+        UploadPixels(pixels, sizeof(pixels));
+        CreateViewAndSampler();
+    }
+    catch (...) { Destroy(); throw; }
+}
+
 void GfxTexture::Destroy()
 {
     if (device == VK_NULL_HANDLE)

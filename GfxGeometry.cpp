@@ -4,6 +4,7 @@
 #include <cstring>
 #include <limits>
 #include <stdexcept>
+#include <cmath>
 
 GfxGeometry::GfxGeometry(const std::string& name) : name(name)
 {
@@ -72,6 +73,31 @@ void GfxGeometry::Upload()
     for (uint32_t index : indices)
         if (index >= vertices.size())
             throw std::runtime_error("Geometry index is out of range: " + name);
+    if (sourceMaterials.empty())
+        sourceMaterials.push_back({ "fallback", glm::vec3(1.0f), {} });
+    if (submeshes.empty())
+        submeshes.push_back({ 0, static_cast<uint32_t>(indices.size()), 0, name });
+    uint64_t nextIndex = 0;
+    for (const auto& submesh : submeshes)
+    {
+        if (submesh.firstIndex != nextIndex || submesh.indexCount == 0 || submesh.indexCount % 3 != 0
+            || submesh.materialSlot >= sourceMaterials.size())
+            throw std::runtime_error("Invalid geometry submesh: " + name);
+        nextIndex += submesh.indexCount;
+        if (nextIndex > indices.size())
+            throw std::runtime_error("Submesh exceeds index buffer: " + name);
+    }
+    if (nextIndex != indices.size())
+        throw std::runtime_error("Submeshes must cover the index buffer: " + name);
+
+    boundsMin = boundsMax = vertices.front().position;
+    for (const Vertex& vertex : vertices)
+    {
+        if (!std::isfinite(vertex.position.x) || !std::isfinite(vertex.position.y) || !std::isfinite(vertex.position.z))
+            throw std::runtime_error("Geometry position is not finite: " + name);
+        boundsMin = glm::min(boundsMin, vertex.position);
+        boundsMax = glm::max(boundsMax, vertex.position);
+    }
 
     device = gfxCtx->logicalDevice;
     try

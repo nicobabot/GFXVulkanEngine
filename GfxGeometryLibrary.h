@@ -17,6 +17,9 @@ public:
     GfxGeometry* GetOrCreateCube();
     GfxGeometry* GetOrCreatePlane();
     GfxGeometry* GetOrCreateSphere();
+    // A normalized path and import options identify a shared file mesh.
+    GfxGeometry* LoadObj(const std::string& path, bool flipV = true);
+    size_t GetGeometryCount() const { return geometries.size(); }
     void Clear();
 
 private:

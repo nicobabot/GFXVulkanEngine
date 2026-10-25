@@ -1,6 +1,7 @@
 #include "Imgui/imgui.h"
 #include "Imgui/imgui_impl_glfw.h"
 #include "Imgui/imgui_impl_vulkan.h"
+#include <glm/glm.hpp>
 
 struct QueueFamilyIndices;
 class GfxScene;
@@ -30,7 +31,8 @@ class ImguiHandler
 	static void InitWindow(GLFWwindow* window);
 	static void InitVulkan(ImguiVulkanObjects vulkanObj);
     static void NewFrame();
-    static void Draw(const VkCommandBuffer& commandBuffer, GfxScene& scene);
+    static void BuildFrame(GfxScene& scene, const glm::mat4& view, const glm::mat4& projection);
+    static void Draw(const VkCommandBuffer& commandBuffer);
     static void Cleanup();
 
 };

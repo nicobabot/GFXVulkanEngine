@@ -1,7 +1,7 @@
 #pragma once
-#include "gfxMaths.h"
-#include <vector>
+#include "GfxMeshData.h"
 #include <string>
+#include <vector>
 
 const std::string MODEL_PATH = "Models/viking_room.obj";
 const std::string TEXTURE_PATH = "Textures/viking_room.png";
@@ -9,12 +9,8 @@ const std::string TEXTURE_PATH = "Textures/viking_room.png";
 class GfxLoader
 {
 public:
-	void LoadModel();
-
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
-private:
-	bool basicGeometry = true;
-
+    // Retain shape/material runs as index ranges in shared buffers.
+    // Preserve source positions and winding. Apply orientation/scale per instance.
+    static GfxMeshData LoadObj(const std::string& path, bool flipV = true);
 };
 

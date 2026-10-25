@@ -1,5 +1,8 @@
 #include "../GfxTextureLibrary.h"
 #include "../GfxMaterialLibrary.h"
+#include "../GfxGeometryLibrary.h"
+#include "../GfxGeometry.h"
+#include "../GfxObject.h"
 #include "../GfxContext.h"
 #include "../GfxPipelineManager.h"
 #include "../DebugUtils.h"
@@ -190,7 +193,7 @@ private:
     }
 };
 
-static void CheckLastMip(const GfxTexture& texture)
+static void CheckLastMip(const GfxTexture& texture, bool white = false)
 {
     struct Readback
     {
@@ -242,7 +245,8 @@ static void CheckLastMip(const GfxTexture& texture)
     void* pixels = nullptr;
     Check(vkMapMemory(gfxCtx->logicalDevice, readback.memory, 0, 4, 0, &pixels), "Mapping readback");
     const auto* rgba = static_cast<const unsigned char*>(pixels);
-    const bool matches = rgba[0] == 64 && rgba[1] == 128 && rgba[2] == 192 && rgba[3] == 255;
+    const bool matches = rgba[0] == (white ? 255 : 64) && rgba[1] == (white ? 255 : 128)
+        && rgba[2] == (white ? 255 : 192) && rgba[3] == 255;
     vkUnmapMemory(gfxCtx->logicalDevice, readback.memory);
     Require(matches, "GPU mip readback did not match the constant fixture pixels");
 }
@@ -252,6 +256,29 @@ static void RunTests()
     TestDevice device;
     Fixtures fixtures;
     GfxTextureLibrary library;
+    {
+        GfxGeometryLibrary geometries;
+        const GfxGeometry* room = geometries.LoadObj("Models/viking_room.obj");
+        Require(room == geometries.LoadObj("Models/../Models/viking_room.obj"), "OBJ aliases did not share geometry");
+        Require(room == geometries.LoadObj(std::filesystem::absolute("Models/viking_room.obj").string()), "Absolute OBJ path did not share geometry");
+        Require(room->vertexBuffer != VK_NULL_HANDLE && room->indexBuffer != VK_NULL_HANDLE
+            && room->indexCount == room->indices.size(), "OBJ geometry was not uploaded correctly");
+        const GfxGeometry* unflipped = geometries.LoadObj("Models/viking_room.obj", false);
+        Require(unflipped != room && geometries.GetGeometryCount() == 2, "OBJ import options were not part of the cache key");
+        Require(room->boundsMax.x > room->boundsMin.x && room->boundsMax.y > room->boundsMin.y
+            && room->boundsMax.z > room->boundsMin.z, "Imported geometry bounds are invalid");
+        bool rejected = false;
+        try { geometries.LoadObj("Models/__missing_test_model.obj"); }
+        catch (const std::exception&) { rejected = true; }
+        Require(rejected && geometries.GetGeometryCount() == 2, "Failed OBJ load polluted the cache");
+        const GfxGeometry* cube = geometries.GetOrCreateCube();
+        Require(cube == geometries.GetOrCreateCube() && cube != room, "Procedural and imported cache keys collided");
+        Check(vkDeviceWaitIdle(device.context.logicalDevice), "Waiting before geometry cleanup");
+        geometries.Clear();
+        geometries.Clear();
+        Require(geometries.LoadObj("Models/viking_room.obj") != nullptr, "OBJ reload after Clear failed");
+        geometries.Clear();
+    }
     const GfxTexture* texture = library.Load("Textures/viking_room.png");
     Require(texture == library.Load("Textures/../Textures/viking_room.png"), "Normalized paths did not share a texture");
     Require(texture == library.Load(std::filesystem::absolute("Textures/viking_room.png").string()), "Absolute path did not share a texture");
@@ -299,6 +326,36 @@ static void RunTests()
         // Material sets are destroyed before the texture resources they reference.
         materials.Clear();
     }
+    {
+        GfxGeometryLibrary geometries;
+        GfxMaterialLibrary materials;
+        materials.Initialize(device.context.logicalDevice);
+        const auto* fallback = materials.Create("fallback", texture);
+        const auto* panels = geometries.LoadObj("Models/material_test.obj");
+        const auto slots = materials.CreateObjMaterials(*panels, library, fallback);
+        Require(slots.size() == 4 && slots[0] == fallback, "Imported fallback slot mismatch");
+        Require(slots[1]->GetBaseColorTexture() == library.GetWhite()
+            && slots[2]->GetBaseColorTexture() == library.GetWhite(), "Untextured materials did not share white");
+        Require(slots[1]->GetBaseColorFactor() == glm::vec4(0.9f, 0.05f, 0.05f, 1.0f), "Imported Kd mismatch");
+        Require(slots[3]->GetBaseColorTexture() == library.Load("Textures/texture.jpg"), "MTL texture not shared");
+        Require(slots == materials.CreateObjMaterials(*panels, library, fallback), "OBJ materials were not cached");
+        CheckLastMip(*library.GetWhite(), true);
+        GfxObject first(VK_NULL_HANDLE, VK_NULL_HANDLE);
+        GfxObject second(VK_NULL_HANDLE, VK_NULL_HANDLE);
+        first.geometry = second.geometry = panels;
+        first.material = second.material = fallback;
+        first.materials = second.materials = slots;
+        second.materials[1] = slots[2];
+        Require(first.GetMaterial(1) == slots[1] && second.GetMaterial(1) == slots[2]
+            && second.GetMaterial(999) == fallback, "Instance material override or fallback failed");
+        bool conflictRejected = false;
+        try { materials.Create(slots[1]->GetName(), library.GetWhite(), glm::vec4(1.0f)); }
+        catch (const std::exception&) { conflictRejected = true; }
+        Require(conflictRejected, "Conflicting material color was accepted");
+        Check(vkDeviceWaitIdle(device.context.logicalDevice), "Waiting before imported material cleanup");
+        materials.Clear();
+        geometries.Clear();
+    }
     Check(vkDeviceWaitIdle(device.context.logicalDevice), "Waiting before clearing textures");
     library.Clear();
     library.Clear();
@@ -313,7 +370,7 @@ int main()
     {
         RunTests();
         Require(validationErrors == 0, "Vulkan validation reported errors");
-        std::cout << "PASS: texture cache/readback, material sharing/descriptors/capacity, clear/reload; zero validation errors.\n";
+        std::cout << "PASS: OBJ cache/upload, MTL materials, white texture readback, instance overrides, descriptors/capacity, clear/reload; zero validation errors.\n";
         return 0;
     }
     catch (const std::exception& error)
