@@ -1,13 +1,16 @@
 #include "../gfxMaths.h"
 #include "../GfxObject.h"
 #include "../GfxScene.h"
+#include "../GfxEditorLayout.h"
 #include "../Imgui/imgui.h"
+#include "../Imgui/imgui_internal.h"
 #include "../Imgui/ImGuizmo/ImGuizmo.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <string>
 
 static void Require(bool condition, const char* message)
 {
@@ -113,6 +116,86 @@ static void TestGizmo()
     }
 }
 
+static void TestDocking()
+{
+    ImGui::CreateContext();
+    struct ContextGuard { ~ContextGuard() { ImGui::DestroyContext(); } } guard;
+    auto configure = []()
+    {
+        auto& io = ImGui::GetIO();
+        io.IniFilename = nullptr;
+        io.LogFilename = nullptr;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.DisplaySize = ImVec2(1280, 720);
+        io.DeltaTime = 1.0f / 60.0f;
+        unsigned char* pixels;
+        int width, height;
+        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    };
+    configure();
+    GfxScene scene;
+    auto frame = [&](bool reset = false)
+    {
+        ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
+        const ImGuiID root = GfxEditorLayout::DrawDockspace(reset);
+        scene.DrawImgui(glm::mat4(1), glm::mat4(1));
+        ImGui::Begin("GFX options");
+        ImGui::TextUnformatted("Docking test");
+        ImGui::End();
+        ImGui::Render();
+        return root;
+    };
+    auto dockId = [](const char* name)
+    {
+        const auto* window = ImGui::FindWindowByName(name);
+        Require(window != nullptr && window->DockId != 0, "Panel was not docked");
+        return window->DockId;
+    };
+    const ImGuiID root = frame();
+    frame();
+    const ImGuiID hierarchy = dockId("Scene Objects");
+    const ImGuiID inspector = dockId("Transform Editor");
+    Require(hierarchy != inspector && dockId("GFX options") != inspector, "Default layout did not split panels");
+    const auto* center = ImGui::DockBuilderGetCentralNode(root);
+    Require(center != nullptr && center->Windows.empty(), "Scene center is not empty");
+    Require((center->MergedFlags & ImGuiDockNodeFlags_PassthruCentralNode) != 0, "Scene center is not transparent");
+    Require(!(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable), "Native viewports were enabled");
+
+    ImGui::GetIO().DisplaySize = ImVec2(1600, 900);
+    frame();
+    frame();
+    Require(ImGui::DockBuilderGetNode(root)->Size.x > 1500, "Dockspace did not follow window resize");
+    Require(dockId("Scene Objects") == hierarchy, "Resize rebuilt the user's layout");
+
+    // Group two panels into tabs, then ensure normal frames do not reset the layout.
+    // A real drag first undocks the payload, then resolves the updated target.
+    // Undocking an only child may merge its sibling into the parent node.
+    ImGuiWindow* payload = ImGui::FindWindowByName("GFX options");
+    ImGui::DockContextQueueUndockWindow(ImGui::GetCurrentContext(), payload);
+    frame();
+    frame();
+    Require(payload->DockId == 0, "Panel did not become floating");
+    ImGuiWindow* target = ImGui::FindWindowByName("Transform Editor");
+    ImGui::DockContextQueueDock(ImGui::GetCurrentContext(), target, target->DockNode,
+        payload, ImGuiDir_None, 0.5f, false);
+    frame();
+    frame();
+    Require(dockId("GFX options") == dockId("Transform Editor"), "Tab grouping was lost");
+    const std::string saved = ImGui::SaveIniSettingsToMemory();
+    Require(saved.find("[Docking][Data]") != std::string::npos, "Docking settings were not serialized");
+    ImGui::DestroyContext();
+    ImGui::CreateContext();
+    configure();
+    ImGui::LoadIniSettingsFromMemory(saved.c_str(), saved.size());
+    frame();
+    frame();
+    Require(dockId("GFX options") == dockId("Transform Editor"), "Saved tab layout did not survive context reload");
+    frame(true);
+    frame();
+    Require(dockId("GFX options") != dockId("Transform Editor"), "Reset did not restore the default split");
+}
+
 static void TestProjection()
 {
     const auto view = glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0), glm::vec3(0, 1, 0));
@@ -143,7 +226,8 @@ int main()
         TestTransforms();
         TestProjection();
         TestGizmo();
-        std::cout << "PASS: TRS/mirrored scale, invalid matrices, Vulkan-screen picking, ImGuizmo drag/release, collapsed editor windows.\n";
+        TestDocking();
+        std::cout << "PASS: TRS, projection, ImGuizmo, collapsed panels, docking/splits/tabs/resize/ini/reset.\n";
         return 0;
     }
     catch (const std::exception& error)

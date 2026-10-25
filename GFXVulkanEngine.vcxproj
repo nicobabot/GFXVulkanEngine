@@ -160,6 +160,7 @@
     <ClCompile Include="GfxMaterialLibrary.cpp" />
     <ClCompile Include="GfxObject.cpp" />
     <ClCompile Include="GfxScene.cpp" />
+    <ClCompile Include="GfxEditorLayout.cpp" />
     <ClCompile Include="GfxOptions.cpp" />
     <ClCompile Include="GfxPipelineManager.cpp" />
     <ClCompile Include="HelloTriangleApp.cpp" />
@@ -194,6 +195,7 @@
     <ClInclude Include="gfxMaths.h" />
     <ClInclude Include="GfxObject.h" />
     <ClInclude Include="GfxScene.h" />
+    <ClInclude Include="GfxEditorLayout.h" />
     <ClInclude Include="GfxOptions.h" />
     <ClInclude Include="GfxPipelineManager.h" />
     <ClInclude Include="HelloTriangleApp.h" />

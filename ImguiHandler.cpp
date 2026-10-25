@@ -3,6 +3,7 @@
 #include "HelloTriangleApp.h"
 #include "GfxOptions.h"
 #include "GfxScene.h"
+#include "GfxEditorLayout.h"
 #include "Imgui/ImGuizmo/ImGuizmo.h"
 
 ImguiVulkanObjects ImguiHandler::vkObjects{};
@@ -28,7 +29,9 @@ void ImguiHandler::InitWindow(GLFWwindow* window)
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    // Keep a single GLFW window/swapchain; native multi-viewports are a separate feature.
+    io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
     ImGui_ImplGlfw_InitForVulkan(window, true);
 }
 
@@ -78,19 +81,8 @@ void ImguiHandler::NewFrame()
 
 void ImguiHandler::BuildFrame(GfxScene& scene, const glm::mat4& view, const glm::mat4& projection)
 {
-    // --- Your ImGui UI code here ---
-    //ImGui::ShowDemoWindow();  // useful for testing
-
-  
-  //bool hierarcyIsOpen = true;
-   // if (ImGui::Begin("Object Hierarchy", &hierarcyIsOpen, 0))
-    {
-        scene.DrawImgui(view, projection);
-    }
-    
-   // ImGui::End();
-
-
+    GfxEditorLayout::DrawDockspace();
+    scene.DrawImgui(view, projection);
     if (ImGui::Begin("GFX options", &GfxOptions::get().isOpen, 0))
     {
         bool tempBlurEnabled = GfxOptions::get().blurEnabled;

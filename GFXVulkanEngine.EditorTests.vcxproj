@@ -18,6 +18,7 @@
     <ClCompile Include="Tests\EditorTests.cpp" />
     <ClCompile Include="GfxObject.cpp" />
     <ClCompile Include="GfxScene.cpp" />
+    <ClCompile Include="GfxEditorLayout.cpp" />
     <ClCompile Include="Imgui\imgui.cpp" />
     <ClCompile Include="Imgui\imgui_draw.cpp" />
     <ClCompile Include="Imgui\imgui_widgets.cpp" />
